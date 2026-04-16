@@ -1,158 +1,109 @@
-# Plataforma Guardião / AEGIS Tech
+# Plataforma Guardiao / AEGIS Tech
+
+Backend platform for institutional protection workflows (MVP), focused on safe handling of sensitive case data and operational incident support.
 
 ## Project Overview
-A backend platform for proactive protection against violence and feminicide in institutional environments. It manages institutions, cameras, victims, aggressors, protective cases, detection events, incidents, and audit logs, and is ready for future integration with local camera/AI connectors.
+- Stack: C# / ASP.NET Core (.NET 8)
+- Database: PostgreSQL via EF Core
+- Optional support (planned): Redis
+- Scope: backend-first MVP
+- Constraint: no video streaming or facial recognition inside backend core; backend receives normalized detection events from a future local gateway
 
-## Problem Statement
-Institutions need a robust, auditable, and extensible backend to manage protective cases and respond to critical detection events, supporting operational safety and compliance.
+## Adopted Architecture
+Hexagonal Architecture was adopted to keep business rules independent from framework and infrastructure details, which is critical for a sensitive, evolving domain.
 
-## Why C#
-C# and ASP.NET Core provide strong domain modeling, auditability, API robustness, security, and maintainability, ideal for critical institutional systems.
+### Why Hexagonal Here
+- Protects domain rules from HTTP/EF coupling.
+- Simplifies testing by using ports and replacing adapters with fakes/mocks.
+- Supports future edge gateway integration without changing core business logic.
+- Fits MVP simplicity while preserving maintainability.
 
-## Why Video Is Not Handled Directly
-Video and facial recognition are handled by a future local connector/edge AI. The backend receives only normalized detection events, ensuring scalability, privacy, and separation of concerns.
+### Layer/Project Responsibilities
+- `src/Guardiao.Domain` (Core): entities, factories, incident strategy, domain ports.
+- `src/Guardiao.Application` (Use cases): inbound/outbound ports, use cases, DTOs, validation, orchestration facade.
+- `src/Guardiao.Infrastructure` (Adapters): EF Core context, repository adapters, integration adapters.
+- `src/Guardiao.Api` (Entry points): controllers, request contracts, middleware/DI wiring.
 
-## MVP Scope
-- Register institutions, cameras, victims, aggressors, cases
-- Link victims/aggressors to cases
-- Receive detection events
-- Evaluate simple incident rule
-- Create incidents
-- List incidents
-- Health check
+### Ports and Adapters (Concrete)
+- Inbound port: `ICreateInstitutionUseCase` in `src/Guardiao.Application/Ports/Inbound`.
+- Outbound port: `IInstitutionRepositoryPort` in `src/Guardiao.Application/Ports/Outbound`.
+- Inbound adapter: `InstitutionsController` in `src/Guardiao.Api/Controllers`.
+- Outbound adapter: `InstitutionRepository` in `src/Guardiao.Infrastructure/Repositories`.
+- Domain integration port: `IDetectionEventAdapter` in `src/Guardiao.Domain/Ports`.
+- Domain adapter implementation: `NormalizedDetectionEventAdapter` in `src/Guardiao.Infrastructure/Adapters`.
 
-## Architecture Overview
-- Modular monolith, clean/layered architecture
-- Projects: Domain, Application, Infrastructure, API
-- PostgreSQL (EF Core), Redis-ready
-- Design patterns: Factory, Adapter, Facade, Strategy
+### How Data Enters and Flows
+- HTTP requests enter through API controllers.
+- Controllers map transport models to application commands and invoke use cases.
+- Use cases depend on ports, not EF Core.
+- Infrastructure adapters implement these ports and persist data via `GuardiaoDbContext`.
+- External normalized detection events are designed to be converted by `IDetectionEventAdapter` implementations before domain/application rule orchestration.
 
-## Folder Structure
+## Current Folder Structure
+```text
+src/
+  Guardiao.Api/
+  Guardiao.Application/
+  Guardiao.Domain/
+  Guardiao.Infrastructure/
+tests/
+  Guardiao.UnitTests/
+  Guardiao.IntegrationTests/
+docs/
 ```
-/src
-  /Guardiao.Api
-  /Guardiao.Application
-  /Guardiao.Domain
-  /Guardiao.Infrastructure
-/tests
-  /Guardiao.UnitTests
-  /Guardiao.IntegrationTests
-```
 
-## Main Entities
-- Institution
-- CameraSource
-- ProtectedPerson
-- RestrictedPerson
-- ProtectiveCase
-- DetectionEvent
-- Incident
-- AuditLog
+## Implemented Endpoints (Current)
+- `POST /api/institutions`
+- `GET /api/institutions/{id}` (placeholder response for MVP)
+- `GET /health`
 
-## Implemented Design Patterns
-- **Factory**: Creation of DetectionEvent and Incident (with validation)
-- **Adapter**: Converts external detection event payloads to internal model
-- **Facade**: Orchestrates event ingestion, rule evaluation, incident creation, audit
-- **Strategy**: Incident rule evaluation (simple rule, extensible)
+## Implemented Domain Components
+- Entities: Institution, CameraSource, ProtectedPerson, RestrictedPerson, ProtectiveCase, DetectionEvent, Incident, AuditLog
+- Factory: DetectionEventFactory, IncidentFactory
+- Strategy: SimpleIncidentRuleStrategy
+- Application Facade: EventIngestionFacade
 
-## API Overview
-- POST /api/institutions
-- POST /api/cameras
-- POST /api/victims
-- POST /api/aggressors
-- POST /api/cases
-- POST /api/events/detections
-- GET /api/incidents
-- GET /health
+## Tests
+### Existing tests
+- Unit tests:
+  - `DetectionEventFactoryTests`: validates required camera source id.
+  - `SimpleIncidentRuleStrategyTests`: validates incident creation decision rule.
+  - `CreateInstitutionUseCaseTests`: validates use-case orchestration and input validation.
+- Integration test:
+  - `InstitutionsControllerIntegrationTests`: validates institution creation endpoint (`201 Created`) using in-memory EF Core.
 
-## Database Overview
-- PostgreSQL, managed via EF Core
-- Initial schema covers all MVP entities
+### What tests validate
+- Core domain rules still work after refactor.
+- Application use case respects validation and uses outbound port.
+- API remains functional after port/adapter boundary changes.
 
-## Testing Strategy
-- Unit tests for factories, strategies, services
-- Integration tests for API and persistence
-- xUnit and Moq
+## Security Notes
+- Input validation via DataAnnotations and application validation service.
+- No hardcoded runtime secrets in code (connection string is environment-configurable).
+- Architecture keeps sensitive business rules separated from transport/persistence details.
+- Backend remains ready for auditable evolution (audit entity already present).
 
-## Security Considerations
-- No secrets in code
-- Input validation on all requests
-- DTO boundaries
-- Error handling without leaking internals
-- Audit trail foundation
-- Role-ready structure for future auth
-- Health check endpoint
+## Documentation for Professor Evidence
+- Architecture details: `ARCHITECTURE.md`
+- Screenshot evidence: `docs/architecture-evidence.md`
+- Implementation status: `docs/current-implementation-status.md`
+- Design patterns used: `docs/design-patterns-used.md`
 
-## Current Limitations
-- No authentication/authorization yet
-- No Docker
-- No real-time event streaming
-- No video/facial recognition in backend
-- Only MVP endpoints/entities
-
-## Next Steps / Roadmap
-- Implement authentication/authorization
-- Add Redis for caching/event support
-- Expand incident rules and notification flows
-- Integrate with edge AI connector
-- Add more endpoints and domain logic
-
-## How to Run Locally
-
+## How to Run
 ### Prerequisites
 - .NET 8 SDK
 - PostgreSQL 15+
-- Redis (for future use)
 
-### Database Setup
-1. Create a PostgreSQL database and user:
-   ```sql
-   CREATE DATABASE guardiao_db;
-   CREATE USER guardiao_user WITH PASSWORD 'your_password_here';
-   GRANT ALL PRIVILEGES ON DATABASE guardiao_db TO guardiao_user;
-   ```
-2. Update `appsettings.Development.json` with your credentials.
+### Configure database
+Update `src/Guardiao.Api/appsettings.Development.json` with your PostgreSQL credentials.
 
-### Restore Packages
-```
+### Commands
+```bash
 dotnet restore
-```
-
-### Run EF Core Migrations
-```
-dotnet ef migrations add InitialCreate -p src/Guardiao.Infrastructure -s src/Guardiao.Api
-```
-```
-dotnet ef database update -p src/Guardiao.Infrastructure -s src/Guardiao.Api
-```
-
-### Start the API
-```
+dotnet test
 dotnet run --project src/Guardiao.Api
 ```
 
-### Run Tests
-```
-dotnet test
-```
-
-### Example Requests
-- Create Institution:
-  ```bash
-  curl -X POST http://localhost:5000/api/institutions -H "Content-Type: application/json" -d '{"name":"Univ Example","address":"123 Main St"}'
-  ```
-- Health Check:
-  ```bash
-  curl http://localhost:5000/health
-  ```
-
-### Expected Local URLs
-- Swagger: http://localhost:5000/swagger
-- Health: http://localhost:5000/health
-
-### Common Issues
-- Connection errors: check DB credentials and network
-- Migration errors: ensure DB is created and user has privileges
-- Port conflicts: change launch settings or use `--urls`
-
----
+### Useful URLs
+- Swagger: `http://localhost:5000/swagger`
+- Health: `http://localhost:5000/health`

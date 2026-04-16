@@ -1,6 +1,6 @@
 using Guardiao.Domain.Entities;
 
-namespace Guardiao.Domain.Adapters;
+namespace Guardiao.Domain.Ports;
 
 public interface IDetectionEventAdapter
 {

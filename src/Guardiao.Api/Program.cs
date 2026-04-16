@@ -1,3 +1,6 @@
+using Guardiao.Application.Ports.Inbound;
+using Guardiao.Application.Ports.Outbound;
+using Guardiao.Application.UseCases;
 using Guardiao.Infrastructure.Persistence;
 using Guardiao.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -13,8 +16,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<GuardiaoDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Dependency Injection
-builder.Services.AddScoped<IInstitutionRepository, InstitutionRepository>();
+// Hexagonal wiring: API resolves inbound use cases and infrastructure adapters.
+builder.Services.AddScoped<ICreateInstitutionUseCase, CreateInstitutionUseCase>();
+builder.Services.AddScoped<IInstitutionRepositoryPort, InstitutionRepository>();
 
 var app = builder.Build();
 
@@ -32,3 +36,5 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 
 app.Run();
+
+public partial class Program;

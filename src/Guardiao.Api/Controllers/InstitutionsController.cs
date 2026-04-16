@@ -1,7 +1,6 @@
 using Guardiao.Api.Contracts;
-using Guardiao.Application.Services;
-using Guardiao.Domain.Entities;
-using Guardiao.Infrastructure.Repositories;
+using Guardiao.Application.DTOs;
+using Guardiao.Application.Ports.Inbound;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Guardiao.Api.Controllers;
@@ -10,25 +9,24 @@ namespace Guardiao.Api.Controllers;
 [Route("api/[controller]")]
 public class InstitutionsController : ControllerBase
 {
-    private readonly IInstitutionRepository _institutionRepository;
+    private readonly ICreateInstitutionUseCase _createInstitutionUseCase;
 
-    public InstitutionsController(IInstitutionRepository institutionRepository)
+    public InstitutionsController(ICreateInstitutionUseCase createInstitutionUseCase)
     {
-        _institutionRepository = institutionRepository;
+        _createInstitutionUseCase = createInstitutionUseCase;
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateInstitutionRequest request)
     {
-        ValidationService.ValidateString(request.Name, nameof(request.Name));
-        ValidationService.ValidateString(request.Address, nameof(request.Address));
-        var institution = new Institution(request.Name, request.Address);
-        var result = await _institutionRepository.AddAsync(institution);
+        // HTTP adapter only maps transport request to application command.
+        var command = new CreateInstitutionCommand(request.Name, request.Address);
+        var result = await _createInstitutionUseCase.ExecuteAsync(command);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(Guid id)
+    public IActionResult GetById(Guid id)
     {
         // Implementação simplificada para MVP
         return Ok();

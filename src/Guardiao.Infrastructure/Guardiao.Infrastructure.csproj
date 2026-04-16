@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Guardiao.Application/Guardiao.Application.csproj" />
     <ProjectReference Include="../Guardiao.Domain/Guardiao.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
