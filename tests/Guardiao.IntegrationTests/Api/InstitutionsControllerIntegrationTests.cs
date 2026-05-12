@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Linq;
 using System.Text.Json;
 using Guardiao.Api.Contracts;
+using Guardiao.Domain.Entities;
+using Guardiao.Domain.ValueObjects;
 using Guardiao.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -16,15 +18,20 @@ namespace Guardiao.IntegrationTests.Api;
 public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiFactory>
 {
     private readonly HttpClient _client;
+    private readonly GuardiaoApiFactory _factory;
 
     public InstitutionsControllerIntegrationTests(GuardiaoApiFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
     [Fact]
     public async Task PostInstitutions_ShouldCreateInstitution()
     {
+        _client.DefaultRequestHeaders.Add("X-Debug-User", "integration-user");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "admin");
+
         var request = new CreateInstitutionRequest
         {
             Name = "School A",
@@ -35,6 +42,75 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(response.Headers.Location);
+    }
+
+    [Fact]
+    public async Task PostInstitutions_ShouldReturnUnauthorized_WhenHeadersAreMissing()
+    {
+        using var client = _factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/institutions", new CreateInstitutionRequest
+        {
+            Name = "No Auth",
+            Address = "Street"
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostInstitutions_ShouldReturnBadRequest_WhenPayloadIsInvalid()
+    {
+        _client.DefaultRequestHeaders.Remove("X-Debug-User");
+        _client.DefaultRequestHeaders.Remove("X-Debug-Role");
+        _client.DefaultRequestHeaders.Add("X-Debug-User", "integration-user");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "admin");
+
+        var response = await _client.PostAsJsonAsync("/api/institutions", new CreateInstitutionRequest
+        {
+            Name = "",
+            Address = "Main Avenue"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostIncidentConfirm_ShouldWriteAuditTrail()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+
+        var institution = new Institution("Institution", "Address");
+        var protectedCase = new ProtectedCase(
+            new ExternalCaseId("case-audit"),
+            1,
+            institution.Id,
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted);
+        var incident = new Incident(protectedCase.Id, Guid.NewGuid());
+
+        db.Institutions.Add(institution);
+        db.ProtectedCases.Add(protectedCase);
+        db.Incidents.Add(incident);
+        await db.SaveChangesAsync();
+
+        _client.DefaultRequestHeaders.Remove("X-Debug-User");
+        _client.DefaultRequestHeaders.Remove("X-Debug-Role");
+        _client.DefaultRequestHeaders.Add("X-Debug-User", "operator-1");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "operator");
+
+        var response = await _client.PostAsJsonAsync($"/api/incidents/{incident.Id}/review/confirm", new { reviewNotes = "looks valid" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var auditEntries = await db.AuditLogs.Where(x => x.EntityId == incident.Id.ToString()).ToListAsync();
+        Assert.Contains(auditEntries, x => x.Action == "incident.review.confirmed");
+
+        _client.DefaultRequestHeaders.Remove("X-Debug-Role");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "auditor");
+        var auditResponse = await _client.GetAsync("/api/audit");
+        Assert.Equal(HttpStatusCode.OK, auditResponse.StatusCode);
     }
 }
 

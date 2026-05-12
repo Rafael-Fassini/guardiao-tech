@@ -29,6 +29,13 @@ public class MonitoringRule
     public TimeWindow ActiveWindow { get; private set; }
     public bool IsEnabled { get; private set; }
 
+    public void Reconfigure(CameraScope cameraScope, TimeWindow activeWindow, bool isEnabled)
+    {
+        CameraScope = cameraScope;
+        ActiveWindow = activeWindow;
+        IsEnabled = isEnabled;
+    }
+
     public bool AppliesTo(CameraScope scope, TimeOnly time) =>
         IsEnabled &&
         CameraScope.SiteId == scope.SiteId &&
