@@ -37,6 +37,7 @@
       "Guardiao.IntegrationTests/1.0.0": {
         "dependencies": {
           "Guardiao.Api": "1.0.0",
+          "Guardiao.Domain": "1.0.0",
           "Guardiao.Infrastructure": "1.0.0",
           "Microsoft.AspNetCore.Mvc.Testing": "8.0.0",
           "Microsoft.EntityFrameworkCore.InMemory": "8.0.0",
@@ -1837,6 +1838,7 @@
           "Guardiao.Application": "1.0.0",
           "Guardiao.Domain": "1.0.0",
           "Microsoft.EntityFrameworkCore": "8.0.0",
+          "Microsoft.EntityFrameworkCore.Relational": "8.0.0",
           "Microsoft.Extensions.Hosting": "8.0.0",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.0"
         },

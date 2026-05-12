@@ -235,6 +235,10 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "Microsoft.EntityFrameworkCore.Relational": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
             "Microsoft.Extensions.Hosting": {
               "target": "Package",
               "version": "[8.0.0, )"
@@ -288,6 +292,9 @@
             "projectReferences": {
               "/home/rafael-menoce/aegis/src/Guardiao.Api/Guardiao.Api.csproj": {
                 "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Api/Guardiao.Api.csproj"
+              },
+              "/home/rafael-menoce/aegis/src/Guardiao.Domain/Guardiao.Domain.csproj": {
+                "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Domain/Guardiao.Domain.csproj"
               },
               "/home/rafael-menoce/aegis/src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj": {
                 "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj"

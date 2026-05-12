@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "cUi4dB2hjWhKsPbLpPZIKi71iFRJih8gWmYlD0U1RcDKhZW0R4bqUKTLFYSFlgBi2w0wC7Z5qozisRTVsDrInQ==",
+  "dgSpecHash": "ZWI/415th8gEuCaame53pEGF23FoC54W5K5v21kaCb4+bnFxIOKSPlJRRa2DXspZFgEmnbf2LDr+waDFk6VvNg==",
   "success": true,
   "projectFilePath": "/home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/Guardiao.IntegrationTests.csproj",
   "expectedPackageFiles": [

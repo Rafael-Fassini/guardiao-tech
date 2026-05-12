@@ -1,6 +1,7 @@
 using Guardiao.Domain.Entities;
 using Guardiao.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace Guardiao.Infrastructure.Persistence;
 
@@ -15,6 +16,8 @@ public class GuardiaoDbContext : DbContext
     public DbSet<PersonProjection> PersonProjections => Set<PersonProjection>();
     public DbSet<MonitoringRule> MonitoringRules => Set<MonitoringRule>();
     public DbSet<Incident> Incidents => Set<Incident>();
+    public DbSet<BiometricTemplate> BiometricTemplates => Set<BiometricTemplate>();
+    public DbSet<EvidenceArtifact> EvidenceArtifacts => Set<EvidenceArtifact>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<WebhookDeliveryRecord> WebhookDeliveries => Set<WebhookDeliveryRecord>();
     public DbSet<SyncCursorRecord> SyncCursors => Set<SyncCursorRecord>();
@@ -62,6 +65,29 @@ public class GuardiaoDbContext : DbContext
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Status).HasConversion<string>();
+        });
+
+        modelBuilder.Entity<BiometricTemplate>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ExternalPersonId)
+                .HasConversion(x => x.Value, x => new ExternalPersonId(x));
+            entity.Property(x => x.RetentionMode)
+                .HasConversion(x => x.Value, x => new RetentionMode(x));
+            entity.Property(x => x.Embedding)
+                .HasConversion(
+                    x => string.Join(';', x.Select(v => v.ToString(CultureInfo.InvariantCulture))),
+                    x => x.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(v => float.Parse(v, CultureInfo.InvariantCulture))
+                        .ToArray());
+        });
+
+        modelBuilder.Entity<EvidenceArtifact>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ArtifactType).HasConversion<string>();
+            entity.Property(x => x.RetentionMode)
+                .HasConversion(x => x.Value, x => new RetentionMode(x));
         });
 
         modelBuilder.Entity<AuditLog>(entity => entity.HasKey(x => x.Id));

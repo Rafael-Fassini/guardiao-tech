@@ -3,6 +3,7 @@ using Guardiao.Application.Ports.Inbound;
 using Guardiao.Application.Ports.Outbound;
 using Guardiao.Application.Services;
 using Guardiao.Infrastructure.Clients;
+using Guardiao.Infrastructure.Caching;
 using Guardiao.Infrastructure.HostedServices;
 using Guardiao.Infrastructure.Messaging;
 using Guardiao.Infrastructure.Options;
@@ -11,6 +12,7 @@ using Guardiao.Infrastructure.Persistence;
 using Guardiao.Infrastructure.Repositories;
 using Guardiao.Infrastructure.Security;
 using Guardiao.Infrastructure.System;
+using Guardiao.Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +63,21 @@ builder.Services
     .Bind(builder.Configuration.GetSection(VictimRegistryOptions.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<VictimRegistryOptions>, VictimRegistryOptionsValidator>();
+builder.Services
+    .AddOptions<RedisOptions>()
+    .Bind(builder.Configuration.GetSection(RedisOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<RedisOptions>, RedisOptionsValidator>();
+builder.Services
+    .AddOptions<ObjectStorageOptions>()
+    .Bind(builder.Configuration.GetSection(ObjectStorageOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<ObjectStorageOptions>, ObjectStorageOptionsValidator>();
+builder.Services
+    .AddOptions<RetentionOptions>()
+    .Bind(builder.Configuration.GetSection(RetentionOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<RetentionOptions>, RetentionOptionsValidator>();
 
 builder.Services.AddHttpClient<IVictimRegistryAccessTokenProvider, VictimRegistryClientCredentialsTokenProvider>()
     .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
@@ -80,10 +97,16 @@ builder.Services.AddScoped<IVictimRegistryPort>(sp => sp.GetRequiredService<Vict
 builder.Services.AddScoped<IVictimRegistryMediaPort>(sp => sp.GetRequiredService<VictimRegistryHttpClientAdapter>());
 builder.Services.AddScoped<ICaseProjectionRepository, CaseProjectionRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
+builder.Services.AddScoped<IBiometricTemplateRepository, BiometricTemplateRepository>();
 builder.Services.AddScoped<IWebhookDeliveryRepository, WebhookDeliveryRepository>();
 builder.Services.AddScoped<ISyncCursorRepository, SyncCursorRepository>();
+builder.Services.AddScoped<IEvidenceStoragePort, MinioEvidenceStorageAdapter>();
+builder.Services.AddScoped<IEvidenceArtifactRepository, EvidenceArtifactRepository>();
 builder.Services.AddSingleton<IVictimRegistrySyncQueue, InMemoryVictimRegistrySyncQueue>();
 builder.Services.AddSingleton<IClock, Guardiao.Infrastructure.System.SystemClock>();
+builder.Services.AddSingleton<IShortLivedStateStore, RedisShortLivedStateStore>();
+builder.Services.AddSingleton<IRetentionPolicyProvider, RetentionPolicyProvider>();
 builder.Services.AddScoped<IWebhookSignatureVerifier, HmacSha256WebhookSignatureVerifier>();
 builder.Services.AddScoped<VictimRegistrySyncService>();
 builder.Services.AddScoped(sp =>
