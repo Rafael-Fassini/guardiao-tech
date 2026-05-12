@@ -1,9 +1,10 @@
 namespace Guardiao.Application.DTOs;
 
-public class DetectionEventDto
+public class BiometricCandidateEventDto
 {
-    public Guid CameraSourceId { get; set; }
-    public Guid? DetectedProtectedPersonId { get; set; }
-    public Guid? DetectedRestrictedPersonId { get; set; }
-    public DateTime Timestamp { get; set; }
+    public Guid ProtectedCaseId { get; set; }
+    public Guid SiteId { get; set; }
+    public Guid CameraId { get; set; }
+    public double MatchScore { get; set; }
+    public DateTime OccurredAtUtc { get; set; }
 }

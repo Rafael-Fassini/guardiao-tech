@@ -1,21 +1,45 @@
+using Guardiao.Domain.Enums;
+using Guardiao.Domain.Exceptions;
+
 namespace Guardiao.Domain.Entities;
 
 public class AuditLog
 {
-    public Guid Id { get; private set; } = Guid.NewGuid();
-    public string Action { get; private set; }
-    public string Entity { get; private set; }
-    public Guid EntityId { get; private set; }
-    public DateTime Timestamp { get; private set; } = DateTime.UtcNow;
-    public string? User { get; private set; }
-    public string? Details { get; private set; }
-
-    public AuditLog(string action, string entity, Guid entityId, string? user, string? details)
+    private AuditLog()
     {
-        Action = action;
-        Entity = entity;
-        EntityId = entityId;
-        User = user;
-        Details = details;
     }
+
+    public AuditLog(AuditActorType actorType, string action, string entityName, string entityId, string details)
+    {
+        if (string.IsNullOrWhiteSpace(action))
+        {
+            throw new InvariantViolationException("Audit action is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(entityName))
+        {
+            throw new InvariantViolationException("Audit entity name is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(entityId))
+        {
+            throw new InvariantViolationException("Audit entity id is required.");
+        }
+
+        Id = Guid.NewGuid();
+        ActorType = actorType;
+        Action = action.Trim();
+        EntityName = entityName.Trim();
+        EntityId = entityId.Trim();
+        Details = details?.Trim() ?? string.Empty;
+        CreatedAtUtc = DateTime.UtcNow;
+    }
+
+    public Guid Id { get; private set; }
+    public AuditActorType ActorType { get; private set; }
+    public string Action { get; private set; } = string.Empty;
+    public string EntityName { get; private set; } = string.Empty;
+    public string EntityId { get; private set; } = string.Empty;
+    public string Details { get; private set; } = string.Empty;
+    public DateTime CreatedAtUtc { get; private set; }
 }
