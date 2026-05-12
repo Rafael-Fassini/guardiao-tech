@@ -1,0 +1,16 @@
+/home/rafael-menoce/aegis/src/Guardiao.Application/bin/Debug/net8.0/Guardiao.Application.deps.json
+/home/rafael-menoce/aegis/src/Guardiao.Application/bin/Debug/net8.0/Guardiao.Application.dll
+/home/rafael-menoce/aegis/src/Guardiao.Application/bin/Debug/net8.0/Guardiao.Application.pdb
+/home/rafael-menoce/aegis/src/Guardiao.Application/bin/Debug/net8.0/Guardiao.Domain.dll
+/home/rafael-menoce/aegis/src/Guardiao.Application/bin/Debug/net8.0/Guardiao.Domain.pdb
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.csproj.AssemblyReference.cache
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.GeneratedMSBuildEditorConfig.editorconfig
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.AssemblyInfoInputs.cache
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.AssemblyInfo.cs
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.csproj.CoreCompileInputs.cache
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.sourcelink.json
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.csproj.CopyComplete
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.dll
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/refint/Guardiao.Application.dll
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/Guardiao.Application.pdb
+/home/rafael-menoce/aegis/src/Guardiao.Application/obj/Debug/net8.0/ref/Guardiao.Application.dll

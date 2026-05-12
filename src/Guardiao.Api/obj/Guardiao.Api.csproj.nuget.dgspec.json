@@ -212,6 +212,9 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
+              "/home/rafael-menoce/aegis/src/Guardiao.Application/Guardiao.Application.csproj": {
+                "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Application/Guardiao.Application.csproj"
+              },
               "/home/rafael-menoce/aegis/src/Guardiao.Domain/Guardiao.Domain.csproj": {
                 "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Domain/Guardiao.Domain.csproj"
               }
@@ -229,6 +232,10 @@
           "targetAlias": "net8.0",
           "dependencies": {
             "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.Extensions.Hosting": {
               "target": "Package",
               "version": "[8.0.0, )"
             },
