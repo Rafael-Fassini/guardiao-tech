@@ -1,0 +1,61 @@
+@page "/audit"
+@attribute [Authorize(Roles = "auditor,admin,operator")]
+@inject OperationsPanelService PanelService
+
+<PageTitle>Auditoria</PageTitle>
+<h1>Trilha de auditoria</h1>
+
+<section class="panel">
+    @if (entries.Count == 0)
+    {
+        <p class="panel-empty">Nenhum registro disponivel.</p>
+    }
+    else
+    {
+        @foreach (var entry in entries)
+        {
+            <article class="audit-card">
+                <div class="audit-top">
+                    <strong>@entry.Action</strong>
+                    <span>@entry.CreatedAtUtc.ToLocalTime()</span>
+                </div>
+                <div class="audit-meta">@entry.EntityName / @entry.EntityId</div>
+                <p>@entry.Details</p>
+            </article>
+        }
+    }
+</section>
+
+<style>
+    .panel {
+        display: grid;
+        gap: 12px;
+    }
+
+    .audit-card {
+        background: rgba(255,250,242,0.88);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+    }
+
+    .audit-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .audit-meta {
+        color: var(--muted);
+        margin: 8px 0;
+    }
+</style>
+
+@code {
+    private List<Guardiao.Domain.Entities.AuditLog> entries = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        entries = await PanelService.ListAuditAsync();
+    }
+}

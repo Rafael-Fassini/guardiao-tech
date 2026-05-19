@@ -39,6 +39,7 @@
           "Guardiao.Api": "1.0.0",
           "Guardiao.Domain": "1.0.0",
           "Guardiao.Infrastructure": "1.0.0",
+          "Guardiao.Web": "1.0.0",
           "Guardiao.Worker.Edge": "1.0.0",
           "Microsoft.AspNetCore.Mvc.Testing": "8.0.0",
           "Microsoft.EntityFrameworkCore.InMemory": "8.0.0",
@@ -1848,6 +1849,18 @@
         },
         "compile": {
           "Guardiao.Infrastructure.dll": {}
+        }
+      },
+      "Guardiao.Web/1.0.0": {
+        "dependencies": {
+          "Guardiao.Domain": "1.0.0",
+          "Guardiao.Infrastructure": "1.0.0"
+        },
+        "runtime": {
+          "Guardiao.Web.dll": {}
+        },
+        "compile": {
+          "Guardiao.Web.dll": {}
         }
       },
       "Guardiao.Worker.Edge/1.0.0": {
@@ -4653,6 +4666,11 @@
       "sha512": ""
     },
     "Guardiao.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Guardiao.Web/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

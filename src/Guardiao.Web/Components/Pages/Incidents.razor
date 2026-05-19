@@ -1,0 +1,68 @@
+@page "/incidents"
+@attribute [Authorize]
+@inject OperationsPanelService PanelService
+
+<PageTitle>Incidentes</PageTitle>
+<h1>Incidentes</h1>
+
+<section class="table-panel">
+    @if (items.Count == 0)
+    {
+        <p class="panel-empty">Nenhum incidente disponivel.</p>
+    }
+    else
+    {
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Status</th>
+                    <th>Caso</th>
+                    <th>Criado em</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var incident in items)
+                {
+                    <tr>
+                        <td>@incident.Id.ToString()[..8]</td>
+                        <td>@incident.Status</td>
+                        <td>@incident.ProtectedCaseId.ToString()[..8]</td>
+                        <td>@incident.CreatedAtUtc.ToLocalTime()</td>
+                        <td><a href="/incidents/@incident.Id">Abrir</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<style>
+    .table-panel {
+        background: rgba(255,250,242,0.88);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+    }
+
+    .grid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .grid th, .grid td {
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(216,203,182,0.6);
+        text-align: left;
+    }
+</style>
+
+@code {
+    private List<Guardiao.Domain.Entities.Incident> items = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        items = await PanelService.ListIncidentsAsync();
+    }
+}

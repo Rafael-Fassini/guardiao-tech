@@ -1,0 +1,113 @@
+@page "/"
+@attribute [Authorize]
+@inject OperationsPanelService PanelService
+
+<PageTitle>Resumo</PageTitle>
+
+<h1>Resumo operacional</h1>
+
+<div class="cards">
+    <section class="metric">
+        <span>Incidentes</span>
+        <strong>@incidents.Count</strong>
+    </section>
+    <section class="metric">
+        <span>Casos monitorados</span>
+        <strong>@cases.Count</strong>
+    </section>
+    <section class="metric">
+        <span>Cameras</span>
+        <strong>@cameras.Count</strong>
+    </section>
+    <section class="metric">
+        <span>Auditoria recente</span>
+        <strong>@audit.Count</strong>
+    </section>
+</div>
+
+<div class="two-col">
+    <section class="panel">
+        <h2>Fila de revisao</h2>
+        @foreach (var incident in incidents.Take(5))
+        {
+            <a class="row-link" href="/incidents/@incident.Id">
+                <span>@incident.Id.ToString()[..8]</span>
+                <strong>@incident.Status</strong>
+            </a>
+        }
+    </section>
+
+    <section class="panel">
+        <h2>Auditoria recente</h2>
+        @foreach (var entry in audit.Take(5))
+        {
+            <div class="audit-row">
+                <strong>@entry.Action</strong>
+                <span>@entry.CreatedAtUtc.ToLocalTime()</span>
+            </div>
+        }
+    </section>
+</div>
+
+<style>
+    .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .metric, .panel {
+        background: rgba(255,250,242,0.88);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+    }
+
+    .metric span, .audit-row span {
+        color: var(--muted);
+    }
+
+    .metric strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 2rem;
+    }
+
+    .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .row-link, .audit-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid rgba(216,203,182,0.6);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    @@media (max-width: 900px) {
+        .two-col {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private List<Guardiao.Domain.Entities.Incident> incidents = [];
+    private List<Guardiao.Domain.Entities.ProtectedCase> cases = [];
+    private List<Guardiao.Domain.Entities.Camera> cameras = [];
+    private List<Guardiao.Domain.Entities.AuditLog> audit = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        incidents = await PanelService.ListIncidentsAsync();
+        cases = await PanelService.ListCasesAsync();
+        cameras = await PanelService.ListCamerasAsync();
+        audit = await PanelService.ListAuditAsync();
+    }
+}

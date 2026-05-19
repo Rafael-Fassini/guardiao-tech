@@ -1,0 +1,63 @@
+is_global = true
+build_property.TargetFramework = net8.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = Guardiao.Web
+build_property.RootNamespace = Guardiao.Web
+build_property.ProjectDir = /home/rafael-menoce/aegis/src/Guardiao.Web/
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 8.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = /home/rafael-menoce/aegis/src/Guardiao.Web
+build_property._RazorSourceGeneratorDebug = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/App.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9BcHAucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvTWFpbkxheW91dC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Pages/Audit.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BdWRpdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Pages/Cameras.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9DYW1lcmFzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Pages/CaseDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9DYXNlRGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Pages/Cases.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9DYXNlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Pages/Home.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ib21lLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Pages/IncidentDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9JbmNpZGVudERldGFpbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Pages/Incidents.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9JbmNpZGVudHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/Pages/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Mb2dpbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/rafael-menoce/aegis/src/Guardiao.Web/Components/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9fSW1wb3J0cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 

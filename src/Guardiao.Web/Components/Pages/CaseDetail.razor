@@ -1,0 +1,143 @@
+@page "/cases/{Id:guid}"
+@attribute [Authorize(Roles = "operator,admin")]
+@inject OperationsPanelService PanelService
+
+<PageTitle>Regras do caso</PageTitle>
+
+@if (item is null)
+{
+    <p class="panel-empty">Caso nao encontrado.</p>
+}
+else
+{
+    <h1>Regras do caso @item.ExternalCaseId</h1>
+    @foreach (var rule in rules)
+    {
+        var model = editModels[rule.Id];
+        <section class="rule-card">
+            <div class="rule-head">
+                <strong>@rule.Id.ToString()[..8]</strong>
+                <span>@(rule.IsEnabled ? "Ativa" : "Inativa")</span>
+            </div>
+            <EditForm Model="@model" OnValidSubmit="@(() => SaveRule(model))">
+                <div class="rule-grid">
+                    <div>
+                        <label>Site</label>
+                        <InputText Value="@(rule.CameraScope.SiteId.ToString())" ValueExpression="@(() => rule.CameraScope.SiteId.ToString())" disabled />
+                    </div>
+                    <div>
+                        <label>Camera</label>
+                        <InputText Value="@(rule.CameraScope.CameraId.ToString())" ValueExpression="@(() => rule.CameraScope.CameraId.ToString())" disabled />
+                    </div>
+                    <div>
+                        <label>Inicio</label>
+                        <InputText @bind-Value="model.StartsAtText" />
+                    </div>
+                    <div>
+                        <label>Fim</label>
+                        <InputText @bind-Value="model.EndsAtText" />
+                    </div>
+                </div>
+                <label class="toggle">
+                    <InputCheckbox @bind-Value="model.Enabled" />
+                    Regra habilitada
+                </label>
+                <button class="primary" type="submit">Salvar regra</button>
+            </EditForm>
+        </section>
+    }
+}
+
+<style>
+    .rule-card {
+        background: rgba(255,250,242,0.88);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+        margin-bottom: 14px;
+    }
+
+    .rule-head {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 14px;
+    }
+
+    .rule-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .rule-grid label, .toggle {
+        color: var(--muted);
+        display: grid;
+        gap: 6px;
+    }
+
+    .rule-grid input {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: #fffefb;
+    }
+
+    .primary {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 16px;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Guardiao.Domain.Entities.ProtectedCase? item;
+    private List<Guardiao.Domain.Entities.MonitoringRule> rules = [];
+    private readonly Dictionary<Guid, RuleEditModel> editModels = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        item = await PanelService.GetCaseAsync(Id);
+        rules = await PanelService.ListRulesAsync(Id);
+        foreach (var rule in rules)
+        {
+            editModels[rule.Id] = new RuleEditModel(rule);
+        }
+    }
+
+    private async Task SaveRule(RuleEditModel model)
+    {
+        await PanelService.UpdateRuleAsync(
+            model.Id,
+            model.SiteId,
+            model.CameraId,
+            TimeOnly.Parse(model.StartsAtText),
+            TimeOnly.Parse(model.EndsAtText),
+            model.Enabled);
+    }
+
+    private sealed class RuleEditModel
+    {
+        public RuleEditModel(Guardiao.Domain.Entities.MonitoringRule rule)
+        {
+            Id = rule.Id;
+            SiteId = rule.CameraScope.SiteId;
+            CameraId = rule.CameraScope.CameraId;
+            StartsAtText = rule.ActiveWindow.StartsAt.ToString("HH\\:mm");
+            EndsAtText = rule.ActiveWindow.EndsAt.ToString("HH\\:mm");
+            Enabled = rule.IsEnabled;
+        }
+
+        public Guid Id { get; }
+        public Guid SiteId { get; }
+        public Guid CameraId { get; }
+        public string StartsAtText { get; set; }
+        public string EndsAtText { get; set; }
+        public bool Enabled { get; set; }
+    }
+}

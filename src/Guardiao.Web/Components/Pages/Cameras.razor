@@ -1,0 +1,84 @@
+@page "/cameras"
+@attribute [Authorize]
+@inject OperationsPanelService PanelService
+
+<PageTitle>Cameras e sites</PageTitle>
+<h1>Cameras e sites</h1>
+
+<div class="split">
+    <section class="panel">
+        <h2>Sites</h2>
+        @foreach (var site in sites)
+        {
+            <div class="row">
+                <strong>@site.Name</strong>
+                <span>@site.AddressLine</span>
+            </div>
+        }
+    </section>
+
+    <section class="panel">
+        <h2>Cameras</h2>
+        @foreach (var camera in cameras)
+        {
+            <div class="camera-row">
+                <div>
+                    <strong>@camera.Name</strong>
+                    <div class="muted">@camera.StreamEndpoint</div>
+                </div>
+                <button class="ghost" @onclick="() => Toggle(camera)">@((camera.IsEnabled ? "Desabilitar" : "Habilitar"))</button>
+            </div>
+        }
+    </section>
+</div>
+
+<style>
+    .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .panel {
+        background: rgba(255,250,242,0.88);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+    }
+
+    .row, .camera-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 0;
+        border-top: 1px solid rgba(216,203,182,0.6);
+    }
+
+    .muted {
+        color: var(--muted);
+        font-size: 0.92rem;
+    }
+
+    @@media (max-width: 900px) {
+        .split {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private List<Guardiao.Domain.Entities.Site> sites = [];
+    private List<Guardiao.Domain.Entities.Camera> cameras = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        sites = await PanelService.ListSitesAsync();
+        cameras = await PanelService.ListCamerasAsync();
+    }
+
+    private async Task Toggle(Guardiao.Domain.Entities.Camera camera)
+    {
+        await PanelService.ToggleCameraAsync(camera.Id, !camera.IsEnabled);
+        cameras = await PanelService.ListCamerasAsync();
+    }
+}

@@ -1,0 +1,105 @@
+@page "/login"
+@inject OperationsSession Session
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Entrar</PageTitle>
+
+<div class="login-shell">
+    <section class="login-card">
+        <p class="eyebrow">Guardiao.Web</p>
+        <h1>Centro de operacoes</h1>
+        <p class="lead">Entre com um perfil operacional para revisar incidentes, administrar regras e acompanhar auditoria.</p>
+
+        <EditForm Model="@model" OnValidSubmit="HandleLogin">
+            <div class="field">
+                <label>Usuario</label>
+                <InputText @bind-Value="model.UserName" />
+            </div>
+            <div class="field">
+                <label>Perfil</label>
+                <InputSelect @bind-Value="model.Role">
+                    <option value="operator">Operator</option>
+                    <option value="admin">Admin</option>
+                    <option value="auditor">Auditor</option>
+                </InputSelect>
+            </div>
+            <button class="submit" type="submit">Iniciar sessao</button>
+        </EditForm>
+    </section>
+</div>
+
+<style>
+    .login-shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+    }
+
+    .login-card {
+        width: min(480px, 100%);
+        background: rgba(255,250,242,0.95);
+        border: 1px solid rgba(216,203,182,0.9);
+        border-radius: 28px;
+        padding: 32px;
+        box-shadow: 0 24px 60px rgba(77, 48, 26, 0.14);
+    }
+
+    .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--accent);
+        font-size: 0.72rem;
+    }
+
+    .lead {
+        color: var(--muted);
+        line-height: 1.5;
+    }
+
+    .field {
+        display: grid;
+        gap: 8px;
+        margin: 16px 0;
+    }
+
+    .field input, .field select {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px 14px;
+        background: #fffefb;
+    }
+
+    .submit {
+        width: 100%;
+        border: 0;
+        border-radius: 999px;
+        padding: 13px 16px;
+        background: var(--accent);
+        color: #fff8ef;
+        font-weight: 700;
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    private LoginModel model = new()
+    {
+        UserName = "operator.ana",
+        Role = "operator"
+    };
+
+    private void HandleLogin()
+    {
+        Session.Login(model.UserName, model.Role);
+        (AuthStateProvider as OperationsAuthenticationStateProvider)?.NotifyStateChanged();
+        Navigation.NavigateTo("/");
+    }
+
+    private sealed class LoginModel
+    {
+        public string UserName { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+    }
+}

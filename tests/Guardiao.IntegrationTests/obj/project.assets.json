@@ -2734,6 +2734,23 @@
           "bin/placeholder/Guardiao.Infrastructure.dll": {}
         }
       },
+      "Guardiao.Web/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Guardiao.Domain": "1.0.0",
+          "Guardiao.Infrastructure": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Guardiao.Web.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Guardiao.Web.dll": {}
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
+      },
       "Guardiao.Worker.Edge/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
@@ -8145,6 +8162,11 @@
       "path": "../../src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj",
       "msbuildProject": "../../src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj"
     },
+    "Guardiao.Web/1.0.0": {
+      "type": "project",
+      "path": "../../src/Guardiao.Web/Guardiao.Web.csproj",
+      "msbuildProject": "../../src/Guardiao.Web/Guardiao.Web.csproj"
+    },
     "Guardiao.Worker.Edge/1.0.0": {
       "type": "project",
       "path": "../../src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj",
@@ -8156,6 +8178,7 @@
       "Guardiao.Api >= 1.0.0",
       "Guardiao.Domain >= 1.0.0",
       "Guardiao.Infrastructure >= 1.0.0",
+      "Guardiao.Web >= 1.0.0",
       "Guardiao.Worker.Edge >= 1.0.0",
       "Microsoft.AspNetCore.Mvc.Testing >= 8.0.0",
       "Microsoft.EntityFrameworkCore.InMemory >= 8.0.0",
@@ -8198,6 +8221,9 @@
             },
             "/home/rafael-menoce/aegis/src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj": {
               "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj"
+            },
+            "/home/rafael-menoce/aegis/src/Guardiao.Web/Guardiao.Web.csproj": {
+              "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Web/Guardiao.Web.csproj"
             },
             "/home/rafael-menoce/aegis/src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj": {
               "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj"

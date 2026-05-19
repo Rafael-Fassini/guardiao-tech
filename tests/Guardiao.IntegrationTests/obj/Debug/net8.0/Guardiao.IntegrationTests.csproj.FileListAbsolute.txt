@@ -432,3 +432,8 @@
 /home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/bin/Debug/net8.0/Guardiao.Worker.Edge
 /home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/bin/Debug/net8.0/Guardiao.Worker.Edge.dll
 /home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/bin/Debug/net8.0/Guardiao.Worker.Edge.pdb
+/home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/bin/Debug/net8.0/Guardiao.Web.deps.json
+/home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/bin/Debug/net8.0/Guardiao.Web.runtimeconfig.json
+/home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/bin/Debug/net8.0/Guardiao.Web
+/home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/bin/Debug/net8.0/Guardiao.Web.dll
+/home/rafael-menoce/aegis/tests/Guardiao.IntegrationTests/bin/Debug/net8.0/Guardiao.Web.pdb

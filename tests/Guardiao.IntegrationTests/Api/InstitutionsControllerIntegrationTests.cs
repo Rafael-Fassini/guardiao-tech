@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Linq;
 using System.Text.Json;
+using Guardiao.Api;
 using Guardiao.Api.Contracts;
 using Guardiao.Domain.Entities;
 using Guardiao.Domain.ValueObjects;
@@ -114,7 +115,7 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
     }
 }
 
-public class GuardiaoApiFactory : WebApplicationFactory<Program>
+public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
 {
     public const string WebhookSecret = "integration-secret";
 

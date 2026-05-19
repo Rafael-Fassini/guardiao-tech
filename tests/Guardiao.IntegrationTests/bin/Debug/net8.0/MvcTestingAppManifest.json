@@ -3,5 +3,6 @@
   "Guardiao.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/rafael-menoce\/aegis\/src\/Guardiao.Application",
   "Guardiao.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/rafael-menoce\/aegis\/src\/Guardiao.Domain",
   "Guardiao.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/rafael-menoce\/aegis\/src\/Guardiao.Infrastructure",
+  "Guardiao.Web, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/rafael-menoce\/aegis\/src\/Guardiao.Web",
   "Guardiao.Worker.Edge, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/rafael-menoce\/aegis\/src\/Guardiao.Worker.Edge"
 }

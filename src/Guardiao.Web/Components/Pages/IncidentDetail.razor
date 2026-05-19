@@ -1,0 +1,124 @@
+@page "/incidents/{Id:guid}"
+@attribute [Authorize(Roles = "operator,admin")]
+@inject OperationsPanelService PanelService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalhe do incidente</PageTitle>
+
+@if (incident is null)
+{
+    <p class="panel-empty">Incidente nao encontrado.</p>
+}
+else
+{
+    <h1>Incidente @incident.Id.ToString()[..8]</h1>
+    <div class="detail-grid">
+        <section class="panel">
+            <h2>Estado</h2>
+            <dl>
+                <dt>Status</dt>
+                <dd>@incident.Status</dd>
+                <dt>Caso</dt>
+                <dd>@incident.ProtectedCaseId</dd>
+                <dt>Criado</dt>
+                <dd>@incident.CreatedAtUtc.ToLocalTime()</dd>
+            </dl>
+        </section>
+
+        <section class="panel">
+            <h2>Validacao humana</h2>
+            <textarea @bind="reviewNotes" rows="5"></textarea>
+            <div class="actions">
+                <button class="primary" @onclick="Confirm">Confirmar</button>
+                <button class="danger" @onclick="Dismiss">Descartar</button>
+            </div>
+        </section>
+    </div>
+}
+
+<style>
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .panel {
+        background: rgba(255,250,242,0.88);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+    }
+
+    dl {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 10px 14px;
+    }
+
+    dt {
+        color: var(--muted);
+    }
+
+    textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fffefb;
+        resize: vertical;
+    }
+
+    .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .primary, .danger {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 16px;
+        cursor: pointer;
+    }
+
+    .primary {
+        background: var(--ok);
+        color: white;
+    }
+
+    .danger {
+        background: #7b3128;
+        color: white;
+    }
+
+    @@media (max-width: 900px) {
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Guardiao.Domain.Entities.Incident? incident;
+    private string reviewNotes = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        incident = await PanelService.GetIncidentAsync(Id);
+    }
+
+    private async Task Confirm()
+    {
+        await PanelService.ConfirmIncidentAsync(Id, reviewNotes);
+        Navigation.NavigateTo("/incidents", true);
+    }
+
+    private async Task Dismiss()
+    {
+        await PanelService.DismissIncidentAsync(Id, reviewNotes);
+        Navigation.NavigateTo("/incidents", true);
+    }
+}

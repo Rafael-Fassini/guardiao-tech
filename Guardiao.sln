@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Guardiao.Infrastructure", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Guardiao.Worker.Edge", "src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj", "{A1A1A1A1-0000-0000-0000-000000000007}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Guardiao.Web", "src/Guardiao.Web/Guardiao.Web.csproj", "{A1A1A1A1-0000-0000-0000-000000000008}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Guardiao.UnitTests", "tests/Guardiao.UnitTests/Guardiao.UnitTests.csproj", "{A1A1A1A1-0000-0000-0000-000000000005}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Guardiao.IntegrationTests", "tests/Guardiao.IntegrationTests/Guardiao.IntegrationTests.csproj", "{A1A1A1A1-0000-0000-0000-000000000006}"
@@ -42,6 +44,10 @@ Global
 		{A1A1A1A1-0000-0000-0000-000000000007}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1A1A1A1-0000-0000-0000-000000000007}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1A1A1A1-0000-0000-0000-000000000007}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1A1A1A1-0000-0000-0000-000000000008}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1A1A1A1-0000-0000-0000-000000000008}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1A1A1A1-0000-0000-0000-000000000008}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1A1A1A1-0000-0000-0000-000000000008}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A1A1A1A1-0000-0000-0000-000000000005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A1A1A1A1-0000-0000-0000-000000000005}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1A1A1A1-0000-0000-0000-000000000005}.Release|Any CPU.ActiveCfg = Release|Any CPU
