@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Guardiao.UnitTests.Infrastructure;
 
+[Trait("Category", "Contract")]
 public class VictimRegistryContractTests
 {
     [Fact]

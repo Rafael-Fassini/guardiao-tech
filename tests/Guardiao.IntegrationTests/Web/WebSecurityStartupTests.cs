@@ -6,6 +6,7 @@ using Xunit;
 
 namespace Guardiao.IntegrationTests.Web;
 
+[Trait("Category", "Security")]
 public class WebSecurityStartupTests
 {
     [Fact]

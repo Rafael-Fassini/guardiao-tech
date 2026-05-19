@@ -1,0 +1,61 @@
+name: Verification
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore Guardiao.sln
+      - name: Regression Suite
+        run: bash scripts/run-verification.sh
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-results
+          path: artifacts/test-results
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore Guardiao.sln
+      - name: Security Tests
+        run: |
+          dotnet test tests/Guardiao.UnitTests/Guardiao.UnitTests.csproj --filter "Category=Security" -m:1 -nodeReuse:false --logger "trx;LogFileName=security-unit.trx" --results-directory artifacts/security
+          dotnet test tests/Guardiao.IntegrationTests/Guardiao.IntegrationTests.csproj --filter "Category=Security" -m:1 -nodeReuse:false --logger "trx;LogFileName=security-integration.trx" --results-directory artifacts/security
+      - name: Upload Security Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-results
+          path: artifacts/security
+
+  performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore Guardiao.sln
+      - name: Performance Smoke
+        run: bash scripts/run-performance-smoke.sh
+      - name: Upload Performance Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: artifacts/performance

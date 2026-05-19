@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Guardiao.IntegrationTests.Api;
 
+[Trait("Category", "Security")]
 public class ApiSecurityIntegrationTests : IClassFixture<GuardiaoApiFactory>
 {
     private readonly HttpClient _client;
@@ -73,6 +74,7 @@ public class ApiSecurityIntegrationTests : IClassFixture<GuardiaoApiFactory>
     }
 }
 
+ [Trait("Category", "Security")]
 public class ApiSecurityStartupTests
 {
     [Fact]

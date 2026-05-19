@@ -3,6 +3,7 @@ using Xunit;
 
 namespace Guardiao.UnitTests.Infrastructure;
 
+[Trait("Category", "Security")]
 public class SensitiveDataRedactorTests
 {
     [Fact]
