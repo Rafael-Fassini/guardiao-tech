@@ -11,6 +11,7 @@
           "Guardiao.Application": "1.0.0",
           "Guardiao.Domain": "1.0.0",
           "Guardiao.Infrastructure": "1.0.0",
+          "Guardiao.Worker.Edge": "1.0.0",
           "Microsoft.NET.Test.Sdk": "17.10.0",
           "Moq": "4.20.70",
           "xunit": "2.5.0",
@@ -1529,6 +1530,17 @@
         "runtime": {
           "Guardiao.Infrastructure.dll": {}
         }
+      },
+      "Guardiao.Worker.Edge/1.0.0": {
+        "dependencies": {
+          "Guardiao.Application": "1.0.0",
+          "Guardiao.Domain": "1.0.0",
+          "Guardiao.Infrastructure": "1.0.0",
+          "Microsoft.Extensions.Hosting": "8.0.0"
+        },
+        "runtime": {
+          "Guardiao.Worker.Edge.dll": {}
+        }
       }
     }
   },
@@ -2438,6 +2450,11 @@
       "sha512": ""
     },
     "Guardiao.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Guardiao.Worker.Edge/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

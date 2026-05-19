@@ -142,3 +142,9 @@
 /home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll
 /home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Infrastructure.dll
 /home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Infrastructure.pdb
+/home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Worker.Edge.deps.json
+/home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Worker.Edge.runtimeconfig.json
+/home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/appsettings.json
+/home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Worker.Edge
+/home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Worker.Edge.dll
+/home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Worker.Edge.pdb

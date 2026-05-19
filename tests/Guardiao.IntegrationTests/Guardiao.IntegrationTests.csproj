@@ -15,5 +15,6 @@
     <ProjectReference Include="../../src/Guardiao.Domain/Guardiao.Domain.csproj" />
     <ProjectReference Include="../../src/Guardiao.Api/Guardiao.Api.csproj" />
     <ProjectReference Include="../../src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj" />
   </ItemGroup>
 </Project>

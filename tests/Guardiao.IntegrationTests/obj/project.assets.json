@@ -2733,6 +2733,22 @@
         "runtime": {
           "bin/placeholder/Guardiao.Infrastructure.dll": {}
         }
+      },
+      "Guardiao.Worker.Edge/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Guardiao.Application": "1.0.0",
+          "Guardiao.Domain": "1.0.0",
+          "Guardiao.Infrastructure": "1.0.0",
+          "Microsoft.Extensions.Hosting": "8.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Guardiao.Worker.Edge.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Guardiao.Worker.Edge.dll": {}
+        }
       }
     }
   },
@@ -8128,6 +8144,11 @@
       "type": "project",
       "path": "../../src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj",
       "msbuildProject": "../../src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj"
+    },
+    "Guardiao.Worker.Edge/1.0.0": {
+      "type": "project",
+      "path": "../../src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj",
+      "msbuildProject": "../../src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj"
     }
   },
   "projectFileDependencyGroups": {
@@ -8135,6 +8156,7 @@
       "Guardiao.Api >= 1.0.0",
       "Guardiao.Domain >= 1.0.0",
       "Guardiao.Infrastructure >= 1.0.0",
+      "Guardiao.Worker.Edge >= 1.0.0",
       "Microsoft.AspNetCore.Mvc.Testing >= 8.0.0",
       "Microsoft.EntityFrameworkCore.InMemory >= 8.0.0",
       "Microsoft.NET.Test.Sdk >= 17.10.0",
@@ -8176,6 +8198,9 @@
             },
             "/home/rafael-menoce/aegis/src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj": {
               "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Infrastructure/Guardiao.Infrastructure.csproj"
+            },
+            "/home/rafael-menoce/aegis/src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj": {
+              "projectPath": "/home/rafael-menoce/aegis/src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj"
             }
           }
         }
