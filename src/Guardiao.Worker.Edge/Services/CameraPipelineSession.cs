@@ -1,6 +1,7 @@
 using Guardiao.Application.Ports.Outbound;
 using Guardiao.Domain.Entities;
 using Guardiao.Domain.ValueObjects;
+using Guardiao.Worker.Edge.Adapters;
 using Guardiao.Worker.Edge.Options;
 using Guardiao.Worker.Edge.Pipeline;
 
@@ -14,6 +15,7 @@ public sealed class CameraPipelineSession
     private readonly IFaceEmbedderPort _embedderPort;
     private readonly IFaceMatcherPort _matcherPort;
     private readonly ICandidateEventPublisher _publisher;
+    private readonly IRestrictedGalleryProvider _galleryProvider;
     private readonly BoundedCameraFrameQueue _queue;
     private readonly EdgeMetricsCollector _metrics;
     private readonly IClock _clock;
@@ -28,6 +30,7 @@ public sealed class CameraPipelineSession
         IFaceEmbedderPort embedderPort,
         IFaceMatcherPort matcherPort,
         ICandidateEventPublisher publisher,
+        IRestrictedGalleryProvider galleryProvider,
         BoundedCameraFrameQueue queue,
         EdgeMetricsCollector metrics,
         IClock clock,
@@ -39,6 +42,7 @@ public sealed class CameraPipelineSession
         _embedderPort = embedderPort;
         _matcherPort = matcherPort;
         _publisher = publisher;
+        _galleryProvider = galleryProvider;
         _queue = queue;
         _metrics = metrics;
         _clock = clock;
@@ -78,6 +82,11 @@ public sealed class CameraPipelineSession
             return false;
         }
 
+        if (_galleryProvider.GetByScope(cameraOptions.ProtectedCaseId, cameraOptions.SiteId).Count == 0)
+        {
+            return false;
+        }
+
         if (!_samplers.TryGetValue(cameraOptions.CameraId, out var sampler))
         {
             sampler = _samplerFactory.Create(targetFps);
@@ -107,6 +116,15 @@ public sealed class CameraPipelineSession
             var matchStarted = _clock.UtcNow;
             var score = await _matcherPort.MatchAsync(embedding, cameraOptions.ProtectedCaseId, cancellationToken);
             _metrics.RecordLatency("match_latency_ms", _clock.UtcNow - matchStarted, ("camera", cameraOptions.CameraId.ToString()));
+
+            if (_matcherPort is RestrictedGalleryMatcherPort scopeMatcher)
+            {
+                var match = scopeMatcher.MatchWithinScope(embedding, cameraOptions.ProtectedCaseId, cameraOptions.SiteId);
+                if (!match.IsMatch || match.IsBystander)
+                {
+                    continue;
+                }
+            }
 
             var candidateEvent = new BiometricCandidateEvent(
                 cameraOptions.ProtectedCaseId,

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Guardiao.Worker.Edge")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dda6bb4e18a74acf506b7e03c84e88db0881430c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0018f7f08a62651a1da13d194390aebd6fb279ae")]
 [assembly: System.Reflection.AssemblyProductAttribute("Guardiao.Worker.Edge")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Guardiao.Worker.Edge")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
