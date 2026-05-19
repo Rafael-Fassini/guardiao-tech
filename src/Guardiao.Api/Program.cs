@@ -6,6 +6,7 @@ using Guardiao.Infrastructure.Clients;
 using Guardiao.Infrastructure.Caching;
 using Guardiao.Infrastructure.HostedServices;
 using Guardiao.Infrastructure.Messaging;
+using Guardiao.Infrastructure.Notifications;
 using Guardiao.Infrastructure.Options;
 using Guardiao.Application.UseCases;
 using Guardiao.Infrastructure.Persistence;
@@ -98,6 +99,9 @@ builder.Services.AddScoped<IVictimRegistryMediaPort>(sp => sp.GetRequiredService
 builder.Services.AddScoped<ICaseProjectionRepository, CaseProjectionRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
+builder.Services.AddScoped<IMonitoringRuleRepository, MonitoringRuleRepository>();
+builder.Services.AddScoped<ICorrelationDecisionRepository, CorrelationDecisionRepository>();
+builder.Services.AddScoped<ICandidateEventRepository, CandidateEventRepository>();
 builder.Services.AddScoped<IBiometricTemplateRepository, BiometricTemplateRepository>();
 builder.Services.AddScoped<IWebhookDeliveryRepository, WebhookDeliveryRepository>();
 builder.Services.AddScoped<ISyncCursorRepository, SyncCursorRepository>();
@@ -106,8 +110,17 @@ builder.Services.AddScoped<IEvidenceArtifactRepository, EvidenceArtifactReposito
 builder.Services.AddSingleton<IVictimRegistrySyncQueue, InMemoryVictimRegistrySyncQueue>();
 builder.Services.AddSingleton<IClock, Guardiao.Infrastructure.System.SystemClock>();
 builder.Services.AddSingleton<IShortLivedStateStore, RedisShortLivedStateStore>();
+builder.Services.AddSingleton<IShortLivedStatePort>(sp => sp.GetRequiredService<IShortLivedStateStore>() as IShortLivedStatePort
+    ?? throw new InvalidOperationException("Short-lived state store does not implement application port."));
 builder.Services.AddSingleton<IRetentionPolicyProvider, RetentionPolicyProvider>();
+builder.Services.AddScoped<INotificationPort, NoOpNotificationPort>();
 builder.Services.AddScoped<IWebhookSignatureVerifier, HmacSha256WebhookSignatureVerifier>();
+builder.Services.AddScoped(sp => new CorrelationEngineOptions
+{
+    CooldownWindow = TimeSpan.FromMinutes(5),
+    DuplicateSuppressionWindow = TimeSpan.FromSeconds(30)
+});
+builder.Services.AddScoped<CandidateEventCorrelationService>();
 builder.Services.AddScoped<VictimRegistrySyncService>();
 builder.Services.AddScoped(sp =>
 {

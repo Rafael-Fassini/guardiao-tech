@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Guardiao.Application.Ports.Outbound;
 using Guardiao.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 
@@ -17,7 +18,7 @@ internal sealed class CacheEntry
     public required DateTimeOffset ExpiresAtUtc { get; init; }
 }
 
-public sealed class RedisShortLivedStateStore : IShortLivedStateStore
+public sealed class RedisShortLivedStateStore : IShortLivedStateStore, IShortLivedStatePort
 {
     private readonly ConcurrentDictionary<string, CacheEntry> _entries = new();
     private readonly RedisOptions _options;

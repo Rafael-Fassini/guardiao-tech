@@ -16,6 +16,8 @@ public class GuardiaoDbContext : DbContext
     public DbSet<PersonProjection> PersonProjections => Set<PersonProjection>();
     public DbSet<MonitoringRule> MonitoringRules => Set<MonitoringRule>();
     public DbSet<Incident> Incidents => Set<Incident>();
+    public DbSet<BiometricCandidateEvent> BiometricCandidateEvents => Set<BiometricCandidateEvent>();
+    public DbSet<CorrelationDecision> CorrelationDecisions => Set<CorrelationDecision>();
     public DbSet<BiometricTemplate> BiometricTemplates => Set<BiometricTemplate>();
     public DbSet<EvidenceArtifact> EvidenceArtifacts => Set<EvidenceArtifact>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -65,6 +67,25 @@ public class GuardiaoDbContext : DbContext
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Status).HasConversion<string>();
+        });
+
+        modelBuilder.Entity<BiometricCandidateEvent>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.MatchScore)
+                .HasConversion(x => x.Value, x => new MatchScore(x));
+            entity.ComplexProperty(x => x.CameraScope, builder =>
+            {
+                builder.Property(x => x.SiteId).HasColumnName("CandidateCameraScopeSiteId");
+                builder.Property(x => x.CameraId).HasColumnName("CandidateCameraScopeCameraId");
+            });
+        });
+
+        modelBuilder.Entity<CorrelationDecision>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ReasonCode)
+                .HasConversion(x => x.Value, x => new CorrelationReasonCode(x));
         });
 
         modelBuilder.Entity<BiometricTemplate>(entity =>

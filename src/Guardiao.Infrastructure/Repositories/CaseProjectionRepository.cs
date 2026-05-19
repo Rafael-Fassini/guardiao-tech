@@ -20,6 +20,11 @@ public sealed class CaseProjectionRepository : ICaseProjectionRepository
         return _context.ProtectedCases.FirstOrDefaultAsync(x => x.ExternalCaseId.Value == externalCaseId.Value, cancellationToken);
     }
 
+    public Task<ProtectedCase?> GetByIdAsync(Guid protectedCaseId, CancellationToken cancellationToken = default)
+    {
+        return _context.ProtectedCases.FirstOrDefaultAsync(x => x.Id == protectedCaseId, cancellationToken);
+    }
+
     public async Task UpsertAsync(ProtectedCase protectedCase, PersonProjection personProjection, CancellationToken cancellationToken = default)
     {
         var existingCase = await _context.ProtectedCases.FirstOrDefaultAsync(

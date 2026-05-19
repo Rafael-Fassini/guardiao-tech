@@ -23,6 +23,7 @@ public interface IWebhookSignatureVerifier
 public interface ICaseProjectionRepository
 {
     Task<ProtectedCase?> GetByExternalIdAsync(ExternalCaseId externalCaseId, CancellationToken cancellationToken = default);
+    Task<ProtectedCase?> GetByIdAsync(Guid protectedCaseId, CancellationToken cancellationToken = default);
     Task UpsertAsync(ProtectedCase protectedCase, PersonProjection personProjection, CancellationToken cancellationToken = default);
     Task MarkSyncFailureAsync(ExternalCaseId externalCaseId, string failureReason, DateTime occurredAtUtc, CancellationToken cancellationToken = default);
 }
@@ -30,12 +31,30 @@ public interface ICaseProjectionRepository
 public interface IIncidentRepository
 {
     Task<Incident?> GetByIdAsync(Guid incidentId, CancellationToken cancellationToken = default);
+    Task<Incident?> FindLatestActiveByCaseAsync(Guid protectedCaseId, CancellationToken cancellationToken = default);
     Task AddAsync(Incident incident, CancellationToken cancellationToken = default);
+    Task UpdateAsync(Incident incident, CancellationToken cancellationToken = default);
 }
 
 public interface IAuditLogRepository
 {
     Task AddAsync(AuditLog auditLog, CancellationToken cancellationToken = default);
+}
+
+public interface IMonitoringRuleRepository
+{
+    Task<IReadOnlyCollection<MonitoringRule>> ListByCaseAsync(Guid protectedCaseId, CancellationToken cancellationToken = default);
+}
+
+public interface ICorrelationDecisionRepository
+{
+    Task AddAsync(CorrelationDecision decision, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<CorrelationDecision>> ListByCandidateEventAsync(Guid candidateEventId, CancellationToken cancellationToken = default);
+}
+
+public interface ICandidateEventRepository
+{
+    Task AddAsync(BiometricCandidateEvent candidateEvent, CancellationToken cancellationToken = default);
 }
 
 public interface IBiometricTemplateRepository
@@ -110,6 +129,13 @@ public interface IVictimRegistrySyncQueue
 {
     ValueTask EnqueueAsync(ExternalCaseId externalCaseId, CancellationToken cancellationToken = default);
     ValueTask<ExternalCaseId> DequeueAsync(CancellationToken cancellationToken);
+}
+
+public interface IShortLivedStatePort
+{
+    Task SetAsync(string key, string value, TimeSpan? ttl = null, CancellationToken cancellationToken = default);
+    Task<string?> GetAsync(string key, CancellationToken cancellationToken = default);
+    Task RemoveAsync(string key, CancellationToken cancellationToken = default);
 }
 
 public sealed record VictimRegistryCaseSnapshot(
