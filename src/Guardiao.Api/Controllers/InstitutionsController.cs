@@ -5,6 +5,7 @@ using Guardiao.Application.Ports.Inbound;
 using Guardiao.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Guardiao.Api.Controllers;
@@ -25,6 +26,7 @@ public class InstitutionsController : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.RulesManage)]
+    [EnableRateLimiting(SecurityRateLimitPolicies.ApiWrites)]
     public async Task<IActionResult> Create([FromBody] CreateInstitutionRequest request)
     {
         // HTTP adapter only maps transport request to application command.

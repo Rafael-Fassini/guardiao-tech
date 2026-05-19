@@ -13,22 +13,55 @@ public sealed class MinioEvidenceStorageAdapter : IEvidenceStoragePort
         _options = options.Value;
     }
 
-    public async Task<string> StoreAsync(Stream content, string fileName, CancellationToken cancellationToken = default)
+    public async Task<string> StoreAsync(Stream content, string fileName, string contentType, CancellationToken cancellationToken = default)
     {
+        Validate(fileName, contentType);
         Directory.CreateDirectory(_options.RootPath);
 
-        var objectKey = $"{_options.BucketName}/{DateTime.UtcNow:yyyy/MM/dd}/{Guid.NewGuid():N}-{Sanitize(fileName)}";
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        var objectKey = $"{_options.BucketName}/{DateTime.UtcNow:yyyy/MM/dd}/{Guid.NewGuid():N}{extension}";
         var fullPath = Path.Combine(_options.RootPath, objectKey.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
 
         await using var output = File.Create(fullPath);
-        await content.CopyToAsync(output, cancellationToken);
+        await CopyWithLimitAsync(content, output, _options.MaxObjectSizeBytes, cancellationToken);
         return objectKey;
     }
 
-    private static string Sanitize(string fileName)
+    private void Validate(string fileName, string contentType)
     {
-        var invalid = Path.GetInvalidFileNameChars();
-        return new string(fileName.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(extension) || !_options.AllowedFileExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("File extension is not allowed.", nameof(fileName));
+        }
+
+        if (string.IsNullOrWhiteSpace(contentType) || !_options.AllowedContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Content type is not allowed.", nameof(contentType));
+        }
+    }
+
+    private static async Task CopyWithLimitAsync(Stream input, Stream output, long maxBytes, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[81920];
+        long totalBytes = 0;
+
+        while (true)
+        {
+            var read = await input.ReadAsync(buffer, cancellationToken);
+            if (read == 0)
+            {
+                break;
+            }
+
+            totalBytes += read;
+            if (totalBytes > maxBytes)
+            {
+                throw new ArgumentException("Object size exceeded the configured limit.", nameof(input));
+            }
+
+            await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+        }
     }
 }

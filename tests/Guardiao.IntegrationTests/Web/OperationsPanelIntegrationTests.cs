@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Guardiao.IntegrationTests.Web;
@@ -145,6 +146,14 @@ public class GuardiaoWebFactory : WebApplicationFactory<WebEntryPoint>
                     return session;
                 });
             }
+        });
+
+        builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+        {
+            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WebSecurity:EnableOperationsDemoLogin"] = "true"
+            });
         });
     }
 

@@ -6,6 +6,7 @@ using Guardiao.Domain.ValueObjects;
 using Guardiao.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Guardiao.Api.Controllers;
@@ -92,6 +93,7 @@ public class CasesController : ControllerBase
 
     [HttpPut("{id:guid}/rules/{ruleId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.RulesManage)]
+    [EnableRateLimiting(SecurityRateLimitPolicies.ApiWrites)]
     public async Task<IActionResult> PutRule(Guid id, Guid ruleId, [FromBody] UpdateMonitoringRuleRequest request, CancellationToken cancellationToken)
     {
         var rule = await _dbContext.Set<MonitoringRule>()

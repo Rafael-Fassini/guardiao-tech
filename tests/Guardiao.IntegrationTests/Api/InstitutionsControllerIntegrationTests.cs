@@ -148,7 +148,15 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 ["VictimRegistry:AllowedClockSkewSeconds"] = "300",
                 ["VictimRegistry:ReconciliationIntervalSeconds"] = "3600",
                 ["VictimRegistry:ReconciliationPageSize"] = "100",
-                ["VictimRegistry:InitialLookbackMinutes"] = "5"
+                ["VictimRegistry:InitialLookbackMinutes"] = "5",
+                ["ApiSecurity:EnableDebugHeaderAuthentication"] = "true",
+                ["ApiSecurity:EnableSwaggerUi"] = "false",
+                ["ApiSecurity:MaxApiRequestBodyBytes"] = "65536",
+                ["ApiSecurity:MaxWebhookRequestBodyBytes"] = "16384",
+                ["ApiSecurity:ApiWriteRateLimitPermitLimit"] = "100",
+                ["ApiSecurity:ApiWriteRateLimitWindowSeconds"] = "60",
+                ["ApiSecurity:WebhookRateLimitPermitLimit"] = "100",
+                ["ApiSecurity:WebhookRateLimitWindowSeconds"] = "60"
             });
         });
     }

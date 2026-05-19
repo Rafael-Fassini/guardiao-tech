@@ -47,6 +47,10 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
         {
             errors.Add("EdgeWorker:HealthPort must be greater than zero.");
         }
+        else if (options.HealthPort > 65535)
+        {
+            errors.Add("EdgeWorker:HealthPort must be lower than 65536.");
+        }
 
         if (options.QueueSizePerCamera <= 0)
         {
@@ -93,6 +97,11 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
             if (string.IsNullOrWhiteSpace(camera.Source))
             {
                 errors.Add("EdgeWorker:Cameras:Source is required.");
+            }
+            else if (!camera.Source.StartsWith("webcam://", StringComparison.OrdinalIgnoreCase) &&
+                     !camera.Source.StartsWith("rtsp://", StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add("EdgeWorker:Cameras:Source must use webcam:// or rtsp://.");
             }
         }
 

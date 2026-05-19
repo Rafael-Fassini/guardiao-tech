@@ -40,6 +40,9 @@ public class ObjectStorageOptions
     public string BucketName { get; set; } = "guardiao-evidence";
     public string RootPath { get; set; } = "/tmp/guardiao-object-storage";
     public bool Enabled { get; set; } = true;
+    public long MaxObjectSizeBytes { get; set; } = 5 * 1024 * 1024;
+    public string[] AllowedContentTypes { get; set; } = ["image/jpeg", "image/png", "image/webp", "video/mp4"];
+    public string[] AllowedFileExtensions { get; set; } = [".jpg", ".jpeg", ".png", ".webp", ".mp4"];
 }
 
 public sealed class ObjectStorageOptionsValidator : IValidateOptions<ObjectStorageOptions>
@@ -56,6 +59,26 @@ public sealed class ObjectStorageOptionsValidator : IValidateOptions<ObjectStora
         if (string.IsNullOrWhiteSpace(options.RootPath))
         {
             errors.Add("ObjectStorage:RootPath is required.");
+        }
+
+        if (options.MaxObjectSizeBytes <= 0)
+        {
+            errors.Add("ObjectStorage:MaxObjectSizeBytes must be greater than zero.");
+        }
+
+        if (options.AllowedContentTypes.Length == 0)
+        {
+            errors.Add("ObjectStorage:AllowedContentTypes must declare at least one value.");
+        }
+
+        if (options.AllowedFileExtensions.Length == 0)
+        {
+            errors.Add("ObjectStorage:AllowedFileExtensions must declare at least one value.");
+        }
+
+        if (options.AllowedFileExtensions.Any(x => string.IsNullOrWhiteSpace(x) || !x.StartsWith(".", StringComparison.Ordinal)))
+        {
+            errors.Add("ObjectStorage:AllowedFileExtensions must use dotted extensions.");
         }
 
         return errors.Count > 0

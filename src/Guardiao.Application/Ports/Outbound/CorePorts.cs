@@ -65,7 +65,7 @@ public interface IBiometricTemplateRepository
 
 public interface IEvidenceStoragePort
 {
-    Task<string> StoreAsync(Stream content, string fileName, CancellationToken cancellationToken = default);
+    Task<string> StoreAsync(Stream content, string fileName, string contentType, CancellationToken cancellationToken = default);
 }
 
 public interface ICameraCapturePort

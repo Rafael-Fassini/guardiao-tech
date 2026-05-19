@@ -1,7 +1,9 @@
 @page "/login"
+@using Guardiao.Infrastructure.Options
 @inject OperationsSession Session
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject IOptions<WebSecurityOptions> SecurityOptions
 
 <PageTitle>Entrar</PageTitle>
 
@@ -10,6 +12,11 @@
         <p class="eyebrow">Guardiao.Web</p>
         <h1>Centro de operacoes</h1>
         <p class="lead">Entre com um perfil operacional para revisar incidentes, administrar regras e acompanhar auditoria.</p>
+
+        @if (!SecurityOptions.Value.EnableOperationsDemoLogin)
+        {
+            <p class="lead">O login local desta interface foi desabilitado por configuracao.</p>
+        }
 
         <EditForm Model="@model" OnValidSubmit="HandleLogin">
             <div class="field">
@@ -24,7 +31,7 @@
                     <option value="auditor">Auditor</option>
                 </InputSelect>
             </div>
-            <button class="submit" type="submit">Iniciar sessao</button>
+            <button class="submit" type="submit" disabled="@(!SecurityOptions.Value.EnableOperationsDemoLogin)">Iniciar sessao</button>
         </EditForm>
     </section>
 </div>
@@ -92,6 +99,11 @@
 
     private void HandleLogin()
     {
+        if (!SecurityOptions.Value.EnableOperationsDemoLogin)
+        {
+            return;
+        }
+
         Session.Login(model.UserName, model.Role);
         (AuthStateProvider as OperationsAuthenticationStateProvider)?.NotifyStateChanged();
         Navigation.NavigateTo("/");

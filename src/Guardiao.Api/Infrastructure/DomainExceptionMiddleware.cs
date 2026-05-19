@@ -35,6 +35,11 @@ public sealed class DomainExceptionMiddleware
             _logger.LogWarning(ex, "Argument validation failed.");
             await WriteProblemAsync(context, StatusCodes.Status400BadRequest, "Validation failed.", ex.Message);
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled request failure. CorrelationId={CorrelationId}", context.TraceIdentifier);
+            await WriteProblemAsync(context, StatusCodes.Status500InternalServerError, "Request failed.", "An unexpected error occurred.");
+        }
     }
 
     private static async Task WriteProblemAsync(HttpContext context, int statusCode, string title, string detail)

@@ -26,7 +26,24 @@ public class PersistenceOptionsValidatorTests
         var result = validator.Validate(null, new ObjectStorageOptions
         {
             BucketName = "bucket",
-            RootPath = ""
+            RootPath = "",
+            AllowedContentTypes = ["image/jpeg"],
+            AllowedFileExtensions = [".jpg"]
+        });
+
+        Assert.False(result.Succeeded);
+    }
+
+    [Fact]
+    public void ObjectStorageValidator_ShouldFail_WhenNoContentTypesAreConfigured()
+    {
+        var validator = new ObjectStorageOptionsValidator();
+        var result = validator.Validate(null, new ObjectStorageOptions
+        {
+            BucketName = "bucket",
+            RootPath = "/tmp/storage",
+            AllowedContentTypes = [],
+            AllowedFileExtensions = [".jpg"]
         });
 
         Assert.False(result.Succeeded);

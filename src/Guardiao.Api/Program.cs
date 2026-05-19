@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,12 +48,45 @@ builder.Services.AddAuthentication(HeaderAuthenticationHandler.SchemeName)
         _ => { });
 builder.Services.AddAuthorization(options =>
 {
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
     options.AddPolicy(AuthorizationPolicies.MetadataRead, policy => policy.RequireAuthenticatedUser());
     options.AddPolicy(AuthorizationPolicies.CasesRead, policy => policy.RequireAuthenticatedUser());
     options.AddPolicy(AuthorizationPolicies.IncidentsRead, policy => policy.RequireAuthenticatedUser());
     options.AddPolicy(AuthorizationPolicies.RulesManage, policy => policy.RequireRole("admin", "operator"));
     options.AddPolicy(AuthorizationPolicies.IncidentsReview, policy => policy.RequireRole("operator"));
     options.AddPolicy(AuthorizationPolicies.AuditRead, policy => policy.RequireRole("admin", "auditor"));
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(SecurityRateLimitPolicies.ApiWrites, context =>
+    {
+        var security = context.RequestServices.GetRequiredService<IOptions<ApiSecurityOptions>>().Value;
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = security.ApiWriteRateLimitPermitLimit,
+                Window = TimeSpan.FromSeconds(security.ApiWriteRateLimitWindowSeconds),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+    options.AddPolicy(SecurityRateLimitPolicies.Webhook, context =>
+    {
+        var security = context.RequestServices.GetRequiredService<IOptions<ApiSecurityOptions>>().Value;
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "webhook",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = security.WebhookRateLimitPermitLimit,
+                Window = TimeSpan.FromSeconds(security.WebhookRateLimitWindowSeconds),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
 });
 
 // EF Core
@@ -79,6 +113,11 @@ builder.Services
     .Bind(builder.Configuration.GetSection(RetentionOptions.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<RetentionOptions>, RetentionOptionsValidator>();
+builder.Services
+    .AddOptions<ApiSecurityOptions>()
+    .Bind(builder.Configuration.GetSection(ApiSecurityOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<ApiSecurityOptions>, ApiSecurityOptionsValidator>();
 
 builder.Services.AddHttpClient<IVictimRegistryAccessTokenProvider, VictimRegistryClientCredentialsTokenProvider>()
     .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
@@ -115,6 +154,7 @@ builder.Services.AddSingleton<IShortLivedStatePort>(sp => sp.GetRequiredService<
 builder.Services.AddSingleton<IRetentionPolicyProvider, RetentionPolicyProvider>();
 builder.Services.AddScoped<INotificationPort, NoOpNotificationPort>();
 builder.Services.AddScoped<IWebhookSignatureVerifier, HmacSha256WebhookSignatureVerifier>();
+builder.Services.AddSingleton<SensitiveDataRedactor>();
 builder.Services.AddScoped(sp => new CorrelationEngineOptions
 {
     CooldownWindow = TimeSpan.FromMinutes(5),
@@ -140,19 +180,26 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var securityOptions = app.Services.GetRequiredService<IOptions<ApiSecurityOptions>>().Value;
+    if (securityOptions.EnableSwaggerUi)
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
 }
 
+app.UseRateLimiter();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<RequestBodyLimitMiddleware>();
 app.UseMiddleware<DomainExceptionMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
-app.MapGet("/ready", () => Results.Ok(new { status = "Ready" }));
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
+app.MapGet("/ready", () => Results.Ok(new { status = "Ready" })).AllowAnonymous();
 
 app.Run();
 

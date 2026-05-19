@@ -5,6 +5,7 @@ using Guardiao.Domain.Enums;
 using Guardiao.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Guardiao.Api.Controllers;
@@ -64,6 +65,7 @@ public class IncidentsController : ControllerBase
 
     [HttpPost("{id:guid}/review/confirm")]
     [Authorize(Policy = AuthorizationPolicies.IncidentsReview)]
+    [EnableRateLimiting(SecurityRateLimitPolicies.ApiWrites)]
     public async Task<IActionResult> Confirm(Guid id, [FromBody] IncidentReviewRequest request, CancellationToken cancellationToken)
     {
         var incident = await _dbContext.Set<Incident>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -86,6 +88,7 @@ public class IncidentsController : ControllerBase
 
     [HttpPost("{id:guid}/review/dismiss")]
     [Authorize(Policy = AuthorizationPolicies.IncidentsReview)]
+    [EnableRateLimiting(SecurityRateLimitPolicies.ApiWrites)]
     public async Task<IActionResult> Dismiss(Guid id, [FromBody] IncidentReviewRequest request, CancellationToken cancellationToken)
     {
         var incident = await _dbContext.Set<Incident>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

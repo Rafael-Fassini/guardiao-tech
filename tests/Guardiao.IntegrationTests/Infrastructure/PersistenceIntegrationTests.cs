@@ -67,11 +67,13 @@ public class PersistenceIntegrationTests
         var adapter = new MinioEvidenceStorageAdapter(Options.Create(new ObjectStorageOptions
         {
             BucketName = "test-bucket",
-            RootPath = root
+            RootPath = root,
+            AllowedContentTypes = ["image/jpeg"],
+            AllowedFileExtensions = [".jpg"]
         }));
 
         await using var content = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("evidence"));
-        var objectKey = await adapter.StoreAsync(content, "evidence.txt");
+        var objectKey = await adapter.StoreAsync(content, "evidence.jpg", "image/jpeg");
 
         var fullPath = Path.Combine(root, objectKey.Replace('/', Path.DirectorySeparatorChar));
         Assert.True(File.Exists(fullPath));
