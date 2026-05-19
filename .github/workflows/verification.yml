@@ -18,6 +18,8 @@ jobs:
         run: dotnet restore Guardiao.sln
       - name: Regression Suite
         run: bash scripts/run-verification.sh
+      - name: Deployment Config Validation
+        run: bash scripts/validate-deployment-config.sh
       - name: Upload Test Artifacts
         uses: actions/upload-artifact@v4
         with:

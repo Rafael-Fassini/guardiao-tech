@@ -122,3 +122,4 @@
 /home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Web
 /home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Web.dll
 /home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/Guardiao.Web.pdb
+/home/rafael-menoce/aegis/tests/Guardiao.UnitTests/bin/Debug/net8.0/appsettings.Production.template.json

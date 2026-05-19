@@ -42,3 +42,4 @@
 /home/rafael-menoce/aegis/src/Guardiao.Api/obj/Debug/net8.0/Guardiao.Api.pdb
 /home/rafael-menoce/aegis/src/Guardiao.Api/obj/Debug/net8.0/Guardiao.Api.genruntimeconfig.cache
 /home/rafael-menoce/aegis/src/Guardiao.Api/obj/Debug/net8.0/ref/Guardiao.Api.dll
+/home/rafael-menoce/aegis/src/Guardiao.Api/bin/Debug/net8.0/appsettings.Production.template.json

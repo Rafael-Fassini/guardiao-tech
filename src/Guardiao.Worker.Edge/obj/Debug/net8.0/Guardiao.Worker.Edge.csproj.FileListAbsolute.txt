@@ -59,3 +59,4 @@
 /home/rafael-menoce/aegis/src/Guardiao.Worker.Edge/obj/Debug/net8.0/Guardiao.Worker.Edge.pdb
 /home/rafael-menoce/aegis/src/Guardiao.Worker.Edge/obj/Debug/net8.0/Guardiao.Worker.Edge.genruntimeconfig.cache
 /home/rafael-menoce/aegis/src/Guardiao.Worker.Edge/obj/Debug/net8.0/ref/Guardiao.Worker.Edge.dll
+/home/rafael-menoce/aegis/src/Guardiao.Worker.Edge/bin/Debug/net8.0/appsettings.Production.template.json

@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/.DS_Store
+.git
+.codex
+artifacts

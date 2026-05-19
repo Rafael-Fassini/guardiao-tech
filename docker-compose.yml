@@ -1,0 +1,122 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Guardiao.Api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ConnectionStrings__DefaultConnection: Host=${DB_HOST};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
+      Redis__Enabled: ${REDIS_ENABLED}
+      Redis__ConnectionString: ${REDIS_CONNECTION_STRING}
+      VictimRegistry__BaseUrl: ${VICTIM_REGISTRY_BASE_URL}
+      VictimRegistry__TokenUrl: ${VICTIM_REGISTRY_TOKEN_URL}
+      VictimRegistry__ClientId: ${VICTIM_REGISTRY_CLIENT_ID}
+      VictimRegistry__ClientSecret: ${VICTIM_REGISTRY_CLIENT_SECRET}
+      VictimRegistry__Scope: ${VICTIM_REGISTRY_SCOPE}
+      VictimRegistry__WebhookSecret: ${VICTIM_REGISTRY_WEBHOOK_SECRET}
+      VictimRegistry__AllowedClockSkewSeconds: ${VICTIM_REGISTRY_ALLOWED_CLOCK_SKEW_SECONDS}
+      VictimRegistry__ReconciliationIntervalSeconds: ${VICTIM_REGISTRY_RECONCILIATION_INTERVAL_SECONDS}
+      VictimRegistry__ReconciliationPageSize: ${VICTIM_REGISTRY_RECONCILIATION_PAGE_SIZE}
+      VictimRegistry__InitialLookbackMinutes: ${VICTIM_REGISTRY_INITIAL_LOOKBACK_MINUTES}
+      ObjectStorage__RootPath: ${OBJECT_STORAGE_ROOT_PATH}
+      ObjectStorage__BucketName: ${OBJECT_STORAGE_BUCKET}
+      ObjectStorage__MaxObjectSizeBytes: ${OBJECT_STORAGE_MAX_OBJECT_SIZE_BYTES}
+      ApiSecurity__EnableDebugHeaderAuthentication: ${API_ENABLE_DEBUG_HEADER_AUTHENTICATION}
+      ApiSecurity__EnableSwaggerUi: ${API_ENABLE_SWAGGER_UI}
+      ApiSecurity__MaxApiRequestBodyBytes: ${API_MAX_REQUEST_BODY_BYTES}
+      ApiSecurity__MaxWebhookRequestBodyBytes: ${API_MAX_WEBHOOK_REQUEST_BODY_BYTES}
+      ApiSecurity__ApiWriteRateLimitPermitLimit: ${API_WRITE_RATE_LIMIT_PERMIT_LIMIT}
+      ApiSecurity__ApiWriteRateLimitWindowSeconds: ${API_WRITE_RATE_LIMIT_WINDOW_SECONDS}
+      ApiSecurity__WebhookRateLimitPermitLimit: ${API_WEBHOOK_RATE_LIMIT_PERMIT_LIMIT}
+      ApiSecurity__WebhookRateLimitWindowSeconds: ${API_WEBHOOK_RATE_LIMIT_WINDOW_SECONDS}
+      Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - object-storage-data:${OBJECT_STORAGE_ROOT_PATH}
+
+  web:
+    build:
+      context: .
+      dockerfile: src/Guardiao.Web/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ConnectionStrings__DefaultConnection: Host=${DB_HOST};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
+      WebSecurity__EnableOperationsDemoLogin: ${WEB_ENABLE_OPERATIONS_DEMO_LOGIN}
+      Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/login"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/Guardiao.Worker.Edge/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      EdgeWorker__HealthPort: ${EDGE_HEALTH_PORT}
+      EdgeWorker__QueueSizePerCamera: ${EDGE_QUEUE_SIZE_PER_CAMERA}
+      EdgeWorker__IngressTargetFps: ${EDGE_INGRESS_TARGET_FPS}
+      EdgeWorker__ProcessingTargetFps: ${EDGE_PROCESSING_TARGET_FPS}
+      EdgeWorker__MatchThreshold: ${EDGE_MATCH_THRESHOLD}
+      EdgeWorker__MinimumDetectionScore: ${EDGE_MINIMUM_DETECTION_SCORE}
+      EdgeWorker__ReconnectDelayMilliseconds: ${EDGE_RECONNECT_DELAY_MS}
+      Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
+    ports:
+      - "${EDGE_HEALTH_PORT}:${EDGE_HEALTH_PORT}"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:${EDGE_HEALTH_PORT}/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  object-storage-data:
