@@ -1,6 +1,7 @@
 @page "/"
 @attribute [Authorize]
 @inject OperationsPanelService PanelService
+@using Guardiao.Web.Services
 
 <PageTitle>Resumo</PageTitle>
 
@@ -9,26 +10,26 @@
 <div class="cards">
     <section class="metric">
         <span>Incidentes</span>
-        <strong>@incidents.Count</strong>
+        <strong>@summary?.IncidentCount</strong>
     </section>
     <section class="metric">
         <span>Casos monitorados</span>
-        <strong>@cases.Count</strong>
+        <strong>@summary?.CaseCount</strong>
     </section>
     <section class="metric">
         <span>Cameras</span>
-        <strong>@cameras.Count</strong>
+        <strong>@summary?.CameraCount</strong>
     </section>
     <section class="metric">
         <span>Auditoria recente</span>
-        <strong>@audit.Count</strong>
+        <strong>@summary?.AuditEntryCount</strong>
     </section>
 </div>
 
 <div class="two-col">
     <section class="panel">
         <h2>Fila de revisao</h2>
-        @foreach (var incident in incidents.Take(5))
+        @foreach (var incident in summary?.RecentIncidents ?? [])
         {
             <a class="row-link" href="/incidents/@incident.Id">
                 <span>@incident.Id.ToString()[..8]</span>
@@ -39,7 +40,7 @@
 
     <section class="panel">
         <h2>Auditoria recente</h2>
-        @foreach (var entry in audit.Take(5))
+        @foreach (var entry in summary?.RecentAuditEntries ?? [])
         {
             <div class="audit-row">
                 <strong>@entry.Action</strong>
@@ -98,16 +99,10 @@
 </style>
 
 @code {
-    private List<Guardiao.Domain.Entities.Incident> incidents = [];
-    private List<Guardiao.Domain.Entities.ProtectedCase> cases = [];
-    private List<Guardiao.Domain.Entities.Camera> cameras = [];
-    private List<Guardiao.Domain.Entities.AuditLog> audit = [];
+    private OperationsSummaryModel? summary;
 
     protected override async Task OnInitializedAsync()
     {
-        incidents = await PanelService.ListIncidentsAsync();
-        cases = await PanelService.ListCasesAsync();
-        cameras = await PanelService.ListCamerasAsync();
-        audit = await PanelService.ListAuditAsync();
+        summary = await PanelService.GetSummaryAsync();
     }
 }

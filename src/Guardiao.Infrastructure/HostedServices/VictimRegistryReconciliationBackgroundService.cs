@@ -1,6 +1,7 @@
 using Guardiao.Application.Ports.Outbound;
 using Guardiao.Application.Services;
 using Guardiao.Infrastructure.Options;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,25 +12,16 @@ public sealed class VictimRegistryReconciliationBackgroundService : BackgroundSe
 {
     private const string CursorName = "victim-registry-reconciliation";
 
-    private readonly IVictimRegistryPort _victimRegistryPort;
-    private readonly VictimRegistrySyncService _syncService;
-    private readonly ISyncCursorRepository _syncCursorRepository;
-    private readonly IClock _clock;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly VictimRegistryOptions _options;
     private readonly ILogger<VictimRegistryReconciliationBackgroundService> _logger;
 
     public VictimRegistryReconciliationBackgroundService(
-        IVictimRegistryPort victimRegistryPort,
-        VictimRegistrySyncService syncService,
-        ISyncCursorRepository syncCursorRepository,
-        IClock clock,
+        IServiceScopeFactory scopeFactory,
         IOptions<VictimRegistryOptions> options,
         ILogger<VictimRegistryReconciliationBackgroundService> logger)
     {
-        _victimRegistryPort = victimRegistryPort;
-        _syncService = syncService;
-        _syncCursorRepository = syncCursorRepository;
-        _clock = clock;
+        _scopeFactory = scopeFactory;
         _options = options.Value;
         _logger = logger;
     }
@@ -49,15 +41,20 @@ public sealed class VictimRegistryReconciliationBackgroundService : BackgroundSe
     {
         try
         {
-            var cursor = await _syncCursorRepository.GetLastCursorAsync(CursorName, cancellationToken)
-                ?? _clock.UtcNow.AddMinutes(-_options.InitialLookbackMinutes);
+            using var scope = _scopeFactory.CreateScope();
+            var victimRegistryPort = scope.ServiceProvider.GetRequiredService<IVictimRegistryPort>();
+            var syncService = scope.ServiceProvider.GetRequiredService<VictimRegistrySyncService>();
+            var syncCursorRepository = scope.ServiceProvider.GetRequiredService<ISyncCursorRepository>();
+            var clock = scope.ServiceProvider.GetRequiredService<IClock>();
+            var cursor = await syncCursorRepository.GetLastCursorAsync(CursorName, cancellationToken)
+                ?? clock.UtcNow.AddMinutes(-_options.InitialLookbackMinutes);
 
             var page = 1;
             DateTime maxCursor = cursor;
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var cases = await _victimRegistryPort.GetCasesUpdatedSinceAsync(cursor, page, _options.ReconciliationPageSize, cancellationToken);
+                var cases = await victimRegistryPort.GetCasesUpdatedSinceAsync(cursor, page, _options.ReconciliationPageSize, cancellationToken);
                 if (cases.Count == 0)
                 {
                     break;
@@ -65,7 +62,7 @@ public sealed class VictimRegistryReconciliationBackgroundService : BackgroundSe
 
                 foreach (var snapshot in cases)
                 {
-                    await _syncService.SyncSnapshotAsync(snapshot, cancellationToken);
+                    await syncService.SyncSnapshotAsync(snapshot, cancellationToken);
                     if (snapshot.UpdatedAtUtc > maxCursor)
                     {
                         maxCursor = snapshot.UpdatedAtUtc;
@@ -80,7 +77,7 @@ public sealed class VictimRegistryReconciliationBackgroundService : BackgroundSe
                 page++;
             }
 
-            await _syncCursorRepository.SaveLastCursorAsync(CursorName, maxCursor, cancellationToken);
+            await syncCursorRepository.SaveLastCursorAsync(CursorName, maxCursor, cancellationToken);
         }
         catch (Exception ex)
         {

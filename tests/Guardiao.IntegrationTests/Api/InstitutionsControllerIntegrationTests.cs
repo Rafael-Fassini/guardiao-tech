@@ -113,6 +113,69 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
         var auditResponse = await _client.GetAsync("/api/audit");
         Assert.Equal(HttpStatusCode.OK, auditResponse.StatusCode);
     }
+
+    [Fact]
+    public async Task GetOperationsSummary_ShouldReturnCountsAndRecentItems()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+
+        db.Incidents.Add(new Incident(Guid.NewGuid(), Guid.NewGuid()));
+        db.ProtectedCases.Add(new ProtectedCase(
+            new ExternalCaseId("case-summary"),
+            1,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted));
+        db.Cameras.Add(new Camera(Guid.NewGuid(), "Camera Summary", "rtsp://summary"));
+        db.AuditLogs.Add(new AuditLog(
+            Guardiao.Domain.Enums.AuditActorType.Operator,
+            "summary.loaded",
+            "Operations",
+            Guid.NewGuid().ToString(),
+            "ok"));
+        await db.SaveChangesAsync();
+
+        _client.DefaultRequestHeaders.Remove("X-Debug-User");
+        _client.DefaultRequestHeaders.Remove("X-Debug-Role");
+        _client.DefaultRequestHeaders.Add("X-Debug-User", "operator-summary");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "operator");
+
+        var response = await _client.GetAsync("/api/operations/summary");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, payload.GetProperty("incidentCount").GetInt32());
+        Assert.Equal(1, payload.GetProperty("caseCount").GetInt32());
+        Assert.Equal(1, payload.GetProperty("cameraCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task PutCameraState_ShouldToggleCameraAndWriteAudit()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+        var camera = new Camera(Guid.NewGuid(), "Camera Toggle", "rtsp://camera-toggle");
+        db.Cameras.Add(camera);
+        await db.SaveChangesAsync();
+
+        _client.DefaultRequestHeaders.Remove("X-Debug-User");
+        _client.DefaultRequestHeaders.Remove("X-Debug-Role");
+        _client.DefaultRequestHeaders.Add("X-Debug-User", "operator-camera");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "operator");
+
+        var response = await _client.PutAsJsonAsync($"/api/cameras/{camera.Id}/state", new { isEnabled = false });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var savedCamera = await db.Cameras.SingleAsync(x => x.Id == camera.Id);
+        var auditEntries = await db.AuditLogs.Where(x => x.EntityId == camera.Id.ToString()).ToListAsync();
+
+        Assert.False(savedCamera.IsEnabled);
+        Assert.Contains(auditEntries, x => x.Action == "camera.state.updated");
+    }
 }
 
 public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>

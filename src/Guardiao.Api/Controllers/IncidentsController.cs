@@ -27,16 +27,14 @@ public class IncidentsController : ControllerBase
     {
         var items = await _dbContext.Set<Incident>()
             .OrderByDescending(x => x.CreatedAtUtc)
-            .Select(x => new
-            {
+            .Select(x => new IncidentListItemResponse(
                 x.Id,
                 x.ProtectedCaseId,
                 x.CandidateEventId,
-                Status = x.Status.ToString(),
+                x.Status.ToString(),
                 x.CreatedAtUtc,
                 x.ReviewedAtUtc,
-                x.EscalatedAtUtc
-            })
+                x.EscalatedAtUtc))
             .ToListAsync(cancellationToken);
 
         return Ok(items);
@@ -47,17 +45,15 @@ public class IncidentsController : ControllerBase
     {
         var item = await _dbContext.Set<Incident>()
             .Where(x => x.Id == id)
-            .Select(x => new
-            {
+            .Select(x => new IncidentDetailResponse(
                 x.Id,
                 x.ProtectedCaseId,
                 x.CandidateEventId,
-                Status = x.Status.ToString(),
+                x.Status.ToString(),
                 x.CreatedAtUtc,
                 x.ReviewedAtUtc,
                 x.EscalatedAtUtc,
-                x.ReviewNotes
-            })
+                x.ReviewNotes))
             .FirstOrDefaultAsync(cancellationToken);
 
         return item is null ? NotFound() : Ok(item);
@@ -83,7 +79,15 @@ public class IncidentsController : ControllerBase
             $"status={IncidentStatus.Confirmed}"));
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Ok(new { incident.Id, Status = incident.Status.ToString(), incident.ReviewedAtUtc });
+        return Ok(new IncidentDetailResponse(
+            incident.Id,
+            incident.ProtectedCaseId,
+            incident.CandidateEventId,
+            incident.Status.ToString(),
+            incident.CreatedAtUtc,
+            incident.ReviewedAtUtc,
+            incident.EscalatedAtUtc,
+            incident.ReviewNotes));
     }
 
     [HttpPost("{id:guid}/review/dismiss")]
@@ -106,6 +110,14 @@ public class IncidentsController : ControllerBase
             $"status={IncidentStatus.Dismissed}"));
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Ok(new { incident.Id, Status = incident.Status.ToString(), incident.ReviewedAtUtc });
+        return Ok(new IncidentDetailResponse(
+            incident.Id,
+            incident.ProtectedCaseId,
+            incident.CandidateEventId,
+            incident.Status.ToString(),
+            incident.CreatedAtUtc,
+            incident.ReviewedAtUtc,
+            incident.EscalatedAtUtc,
+            incident.ReviewNotes));
     }
 }

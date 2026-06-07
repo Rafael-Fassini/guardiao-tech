@@ -28,16 +28,14 @@ public class CasesController : ControllerBase
     {
         var cases = await _dbContext.ProtectedCases
             .OrderBy(x => x.CreatedAt)
-            .Select(x => new
-            {
+            .Select(x => new ProtectedCaseListItemResponse(
                 x.Id,
-                ExternalCaseId = x.ExternalCaseId.Value,
+                x.ExternalCaseId.Value,
                 x.Version,
-                MonitoringStatus = x.MonitoringStatus.Value,
-                ConsentStatus = x.ConsentStatus.Value,
+                x.MonitoringStatus.Value,
+                x.ConsentStatus.Value,
                 x.LastSynchronizedAt,
-                x.LastSyncStatus
-            })
+                x.LastSyncStatus))
             .ToListAsync(cancellationToken);
 
         return Ok(cases);
@@ -48,19 +46,17 @@ public class CasesController : ControllerBase
     {
         var item = await _dbContext.ProtectedCases
             .Where(x => x.Id == id)
-            .Select(x => new
-            {
+            .Select(x => new ProtectedCaseDetailResponse(
                 x.Id,
-                ExternalCaseId = x.ExternalCaseId.Value,
+                x.ExternalCaseId.Value,
                 x.Version,
-                MonitoringStatus = x.MonitoringStatus.Value,
-                ConsentStatus = x.ConsentStatus.Value,
+                x.MonitoringStatus.Value,
+                x.ConsentStatus.Value,
                 x.PersonProjectionId,
                 x.CreatedAt,
                 x.LastSynchronizedAt,
                 x.LastSyncStatus,
-                x.LastSyncFailureReason
-            })
+                x.LastSyncFailureReason))
             .FirstOrDefaultAsync(cancellationToken);
 
         return item is null ? NotFound() : Ok(item);
@@ -77,15 +73,13 @@ public class CasesController : ControllerBase
 
         var rules = await _dbContext.Set<MonitoringRule>()
             .Where(x => x.ProtectedCaseId == id)
-            .Select(x => new
-            {
+            .Select(x => new MonitoringRuleResponse(
                 x.Id,
-                SiteId = x.CameraScope.SiteId,
-                CameraId = x.CameraScope.CameraId,
-                StartsAt = x.ActiveWindow.StartsAt,
-                EndsAt = x.ActiveWindow.EndsAt,
-                x.IsEnabled
-            })
+                x.CameraScope.SiteId,
+                x.CameraScope.CameraId,
+                x.ActiveWindow.StartsAt,
+                x.ActiveWindow.EndsAt,
+                x.IsEnabled))
             .ToListAsync(cancellationToken);
 
         return Ok(rules);
@@ -118,14 +112,12 @@ public class CasesController : ControllerBase
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Ok(new
-        {
+        return Ok(new MonitoringRuleResponse(
             rule.Id,
-            SiteId = rule.CameraScope.SiteId,
-            CameraId = rule.CameraScope.CameraId,
-            StartsAt = rule.ActiveWindow.StartsAt,
-            EndsAt = rule.ActiveWindow.EndsAt,
-            rule.IsEnabled
-        });
+            rule.CameraScope.SiteId,
+            rule.CameraScope.CameraId,
+            rule.ActiveWindow.StartsAt,
+            rule.ActiveWindow.EndsAt,
+            rule.IsEnabled));
     }
 }

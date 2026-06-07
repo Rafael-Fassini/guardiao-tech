@@ -53,6 +53,7 @@ services:
       ObjectStorage__BucketName: ${OBJECT_STORAGE_BUCKET}
       ObjectStorage__MaxObjectSizeBytes: ${OBJECT_STORAGE_MAX_OBJECT_SIZE_BYTES}
       ApiSecurity__EnableDebugHeaderAuthentication: ${API_ENABLE_DEBUG_HEADER_AUTHENTICATION}
+      ApiSecurity__PanelSharedSecret: ${PANEL_API_SHARED_SECRET}
       ApiSecurity__EnableSwaggerUi: ${API_ENABLE_SWAGGER_UI}
       ApiSecurity__MaxApiRequestBodyBytes: ${API_MAX_REQUEST_BODY_BYTES}
       ApiSecurity__MaxWebhookRequestBodyBytes: ${API_MAX_WEBHOOK_REQUEST_BODY_BYTES}
@@ -82,7 +83,8 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
-      ConnectionStrings__DefaultConnection: Host=${DB_HOST};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
+      PanelApi__BaseUrl: ${PANEL_API_BASE_URL}
+      PanelApi__SharedSecret: ${PANEL_API_SHARED_SECRET}
       WebSecurity__EnableOperationsDemoLogin: ${WEB_ENABLE_OPERATIONS_DEMO_LOGIN}
       Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
     ports:

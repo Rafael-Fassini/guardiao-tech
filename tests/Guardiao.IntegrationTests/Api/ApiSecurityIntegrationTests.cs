@@ -46,8 +46,8 @@ public class ApiSecurityIntegrationTests : IClassFixture<GuardiaoApiFactory>
     public async Task GetAudit_ShouldReturnForbidden_WhenRoleLacksPermission()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-Debug-User", "operator-user");
-        client.DefaultRequestHeaders.Add("X-Debug-Role", "operator");
+        client.DefaultRequestHeaders.Add("X-Debug-User", "viewer-user");
+        client.DefaultRequestHeaders.Add("X-Debug-Role", "viewer");
 
         var response = await client.GetAsync("/api/audit");
 

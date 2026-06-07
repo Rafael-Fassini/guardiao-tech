@@ -1,8 +1,5 @@
 @page "/login"
 @using Guardiao.Infrastructure.Options
-@inject OperationsSession Session
-@inject AuthenticationStateProvider AuthStateProvider
-@inject NavigationManager Navigation
 @inject IOptions<WebSecurityOptions> SecurityOptions
 
 <PageTitle>Entrar</PageTitle>
@@ -17,22 +14,21 @@
         {
             <p class="lead">O login local desta interface foi desabilitado por configuracao.</p>
         }
-
-        <EditForm Model="@model" OnValidSubmit="HandleLogin">
+        <form method="post" action="/operations/login">
             <div class="field">
-                <label>Usuario</label>
-                <InputText @bind-Value="model.UserName" />
+                <label for="userName">Usuario</label>
+                <input id="userName" name="userName" value="@model.UserName" />
             </div>
             <div class="field">
-                <label>Perfil</label>
-                <InputSelect @bind-Value="model.Role">
-                    <option value="operator">Operator</option>
-                    <option value="admin">Admin</option>
-                    <option value="auditor">Auditor</option>
-                </InputSelect>
+                <label for="role">Perfil</label>
+                <select id="role" name="role">
+                    <option value="operator" selected="@(model.Role == "operator")">Operator</option>
+                    <option value="admin" selected="@(model.Role == "admin")">Admin</option>
+                    <option value="auditor" selected="@(model.Role == "auditor")">Auditor</option>
+                </select>
             </div>
             <button class="submit" type="submit" disabled="@(!SecurityOptions.Value.EnableOperationsDemoLogin)">Iniciar sessao</button>
-        </EditForm>
+        </form>
     </section>
 </div>
 
@@ -91,23 +87,11 @@
 </style>
 
 @code {
-    private LoginModel model = new()
+    private readonly LoginModel model = new()
     {
         UserName = "operator.ana",
         Role = "operator"
     };
-
-    private void HandleLogin()
-    {
-        if (!SecurityOptions.Value.EnableOperationsDemoLogin)
-        {
-            return;
-        }
-
-        Session.Login(model.UserName, model.Role);
-        (AuthStateProvider as OperationsAuthenticationStateProvider)?.NotifyStateChanged();
-        Navigation.NavigateTo("/");
-    }
 
     private sealed class LoginModel
     {

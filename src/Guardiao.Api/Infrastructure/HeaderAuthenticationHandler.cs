@@ -23,6 +23,16 @@ public sealed class HeaderAuthenticationHandler : AuthenticationHandler<Authenti
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        var panelSubject = Request.Headers["X-Panel-User"].FirstOrDefault();
+        var panelSecret = Request.Headers["X-Panel-Auth"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(_securityOptions.PanelSharedSecret) &&
+            !string.IsNullOrWhiteSpace(panelSubject) &&
+            string.Equals(panelSecret, _securityOptions.PanelSharedSecret, StringComparison.Ordinal))
+        {
+            var panelRole = Request.Headers["X-Panel-Role"].FirstOrDefault() ?? "viewer";
+            return Task.FromResult(Success(panelSubject, panelRole));
+        }
+
         if (!_securityOptions.EnableDebugHeaderAuthentication)
         {
             return Task.FromResult(AuthenticateResult.NoResult());
@@ -35,6 +45,11 @@ public sealed class HeaderAuthenticationHandler : AuthenticationHandler<Authenti
         }
 
         var role = Request.Headers["X-Debug-Role"].FirstOrDefault() ?? "viewer";
+        return Task.FromResult(Success(subject, role));
+    }
+
+    private static AuthenticateResult Success(string subject, string role)
+    {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, subject),
@@ -45,6 +60,6 @@ public sealed class HeaderAuthenticationHandler : AuthenticationHandler<Authenti
         var identity = new ClaimsIdentity(claims, SchemeName);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, SchemeName);
-        return Task.FromResult(AuthenticateResult.Success(ticket));
+        return AuthenticateResult.Success(ticket);
     }
 }

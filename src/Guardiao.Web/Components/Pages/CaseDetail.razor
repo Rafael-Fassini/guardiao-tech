@@ -1,6 +1,7 @@
 @page "/cases/{Id:guid}"
 @attribute [Authorize(Roles = "operator,admin")]
 @inject OperationsPanelService PanelService
+@using Guardiao.Web.Services
 
 <PageTitle>Regras do caso</PageTitle>
 
@@ -19,15 +20,15 @@ else
                 <strong>@rule.Id.ToString()[..8]</strong>
                 <span>@(rule.IsEnabled ? "Ativa" : "Inativa")</span>
             </div>
-            <EditForm Model="@model" OnValidSubmit="@(() => SaveRule(model))">
+            <EditForm Model="@model" FormName="@model.FormName" OnValidSubmit="@(() => SaveRule(model))">
                 <div class="rule-grid">
                     <div>
                         <label>Site</label>
-                        <InputText Value="@(rule.CameraScope.SiteId.ToString())" ValueExpression="@(() => rule.CameraScope.SiteId.ToString())" disabled />
+                        <InputText Value="@(rule.SiteId.ToString())" ValueExpression="@(() => rule.SiteId.ToString())" disabled />
                     </div>
                     <div>
                         <label>Camera</label>
-                        <InputText Value="@(rule.CameraScope.CameraId.ToString())" ValueExpression="@(() => rule.CameraScope.CameraId.ToString())" disabled />
+                        <InputText Value="@(rule.CameraId.ToString())" ValueExpression="@(() => rule.CameraId.ToString())" disabled />
                     </div>
                     <div>
                         <label>Inicio</label>
@@ -96,8 +97,8 @@ else
 @code {
     [Parameter] public Guid Id { get; set; }
 
-    private Guardiao.Domain.Entities.ProtectedCase? item;
-    private List<Guardiao.Domain.Entities.MonitoringRule> rules = [];
+    private ProtectedCaseDetailModel? item;
+    private List<MonitoringRuleModel> rules = [];
     private readonly Dictionary<Guid, RuleEditModel> editModels = [];
 
     protected override async Task OnParametersSetAsync()
@@ -113,6 +114,7 @@ else
     private async Task SaveRule(RuleEditModel model)
     {
         await PanelService.UpdateRuleAsync(
+            Id,
             model.Id,
             model.SiteId,
             model.CameraId,
@@ -123,17 +125,18 @@ else
 
     private sealed class RuleEditModel
     {
-        public RuleEditModel(Guardiao.Domain.Entities.MonitoringRule rule)
+        public RuleEditModel(MonitoringRuleModel rule)
         {
             Id = rule.Id;
-            SiteId = rule.CameraScope.SiteId;
-            CameraId = rule.CameraScope.CameraId;
-            StartsAtText = rule.ActiveWindow.StartsAt.ToString("HH\\:mm");
-            EndsAtText = rule.ActiveWindow.EndsAt.ToString("HH\\:mm");
+            SiteId = rule.SiteId;
+            CameraId = rule.CameraId;
+            StartsAtText = rule.StartsAt.ToString("HH\\:mm");
+            EndsAtText = rule.EndsAt.ToString("HH\\:mm");
             Enabled = rule.IsEnabled;
         }
 
         public Guid Id { get; }
+        public string FormName => $"monitoring-rule-{Id:N}";
         public Guid SiteId { get; }
         public Guid CameraId { get; }
         public string StartsAtText { get; set; }

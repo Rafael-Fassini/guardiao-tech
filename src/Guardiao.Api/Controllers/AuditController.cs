@@ -23,16 +23,14 @@ public class AuditController : ControllerBase
     {
         var entries = await _dbContext.AuditLogs
             .OrderByDescending(x => x.CreatedAtUtc)
-            .Select(x => new
-            {
+            .Select(x => new Guardiao.Api.Contracts.AuditEntryResponse(
                 x.Id,
-                ActorType = x.ActorType.ToString(),
+                x.ActorType.ToString(),
                 x.Action,
                 x.EntityName,
                 x.EntityId,
                 x.Details,
-                x.CreatedAtUtc
-            })
+                x.CreatedAtUtc))
             .ToListAsync(cancellationToken);
 
         return Ok(entries);

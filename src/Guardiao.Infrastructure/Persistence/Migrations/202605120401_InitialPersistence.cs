@@ -1,9 +1,13 @@
+using Guardiao.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Guardiao.Infrastructure.Persistence.Migrations;
 
+[DbContext(typeof(GuardiaoDbContext))]
+[Migration("202605120401_InitialPersistence")]
 public partial class InitialPersistence : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

@@ -1,6 +1,7 @@
 @page "/cases"
 @attribute [Authorize]
 @inject OperationsPanelService PanelService
+@using Guardiao.Web.Services
 
 <PageTitle>Casos</PageTitle>
 <h1>Casos monitorados</h1>
@@ -59,7 +60,7 @@
 </style>
 
 @code {
-    private List<Guardiao.Domain.Entities.ProtectedCase> items = [];
+    private List<ProtectedCaseListItemModel> items = [];
 
     protected override async Task OnInitializedAsync()
     {

@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "operator,admin")]
 @inject OperationsPanelService PanelService
 @inject NavigationManager Navigation
+@using Guardiao.Web.Services
 
 <PageTitle>Detalhe do incidente</PageTitle>
 
@@ -102,7 +103,7 @@ else
 @code {
     [Parameter] public Guid Id { get; set; }
 
-    private Guardiao.Domain.Entities.Incident? incident;
+    private IncidentDetailModel? incident;
     private string reviewNotes = string.Empty;
 
     protected override async Task OnParametersSetAsync()

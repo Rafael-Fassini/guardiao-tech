@@ -56,7 +56,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(AuthorizationPolicies.IncidentsRead, policy => policy.RequireAuthenticatedUser());
     options.AddPolicy(AuthorizationPolicies.RulesManage, policy => policy.RequireRole("admin", "operator"));
     options.AddPolicy(AuthorizationPolicies.IncidentsReview, policy => policy.RequireRole("operator"));
-    options.AddPolicy(AuthorizationPolicies.AuditRead, policy => policy.RequireRole("admin", "auditor"));
+    options.AddPolicy(AuthorizationPolicies.AuditRead, policy => policy.RequireRole("admin", "auditor", "operator"));
 });
 builder.Services.AddRateLimiter(options =>
 {
@@ -91,7 +91,9 @@ builder.Services.AddRateLimiter(options =>
 
 // EF Core
 builder.Services.AddDbContext<GuardiaoDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsql => npgsql.MigrationsAssembly(typeof(GuardiaoDbContext).Assembly.FullName)));
 
 builder.Services
     .AddOptions<VictimRegistryOptions>()
@@ -177,6 +179,12 @@ builder.Services.AddHostedService<VictimRegistryReconciliationBackgroundService>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+    dbContext.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -199,7 +207,13 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
-app.MapGet("/ready", () => Results.Ok(new { status = "Ready" })).AllowAnonymous();
+app.MapGet("/ready", async (GuardiaoDbContext dbContext, CancellationToken cancellationToken) =>
+{
+    var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
+    return canConnect
+        ? Results.Ok(new { status = "Ready" })
+        : Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Dependency unavailable.");
+}).AllowAnonymous();
 
 app.Run();
 

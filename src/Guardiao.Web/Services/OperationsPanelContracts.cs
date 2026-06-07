@@ -1,0 +1,104 @@
+namespace Guardiao.Web.Services;
+
+public sealed record OperationsSummaryModel(
+    int IncidentCount,
+    int CaseCount,
+    int CameraCount,
+    int AuditEntryCount,
+    IReadOnlyCollection<RecentIncidentModel> RecentIncidents,
+    IReadOnlyCollection<AuditEntryModel> RecentAuditEntries);
+
+public sealed record RecentIncidentModel(
+    Guid Id,
+    Guid ProtectedCaseId,
+    string Status,
+    DateTime CreatedAtUtc);
+
+public sealed record IncidentListItemModel(
+    Guid Id,
+    Guid ProtectedCaseId,
+    Guid CandidateEventId,
+    string Status,
+    DateTime CreatedAtUtc,
+    DateTime? ReviewedAtUtc,
+    DateTime? EscalatedAtUtc);
+
+public sealed record IncidentDetailModel(
+    Guid Id,
+    Guid ProtectedCaseId,
+    Guid CandidateEventId,
+    string Status,
+    DateTime CreatedAtUtc,
+    DateTime? ReviewedAtUtc,
+    DateTime? EscalatedAtUtc,
+    string? ReviewNotes);
+
+public sealed record ProtectedCaseListItemModel(
+    Guid Id,
+    string ExternalCaseId,
+    long Version,
+    string MonitoringStatus,
+    string ConsentStatus,
+    DateTime LastSynchronizedAt,
+    string LastSyncStatus);
+
+public sealed record ProtectedCaseDetailModel(
+    Guid Id,
+    string ExternalCaseId,
+    long Version,
+    string MonitoringStatus,
+    string ConsentStatus,
+    Guid PersonProjectionId,
+    DateTime CreatedAt,
+    DateTime LastSynchronizedAt,
+    string LastSyncStatus,
+    string? LastSyncFailureReason);
+
+public sealed record MonitoringRuleModel(
+    Guid Id,
+    Guid SiteId,
+    Guid CameraId,
+    TimeOnly StartsAt,
+    TimeOnly EndsAt,
+    bool IsEnabled);
+
+public sealed record SiteModel(
+    Guid Id,
+    Guid InstitutionId,
+    string Name,
+    string AddressLine);
+
+public sealed record CameraModel(
+    Guid Id,
+    Guid SiteId,
+    string Name,
+    string StreamEndpoint,
+    bool IsEnabled);
+
+public sealed record AuditEntryModel(
+    Guid Id,
+    string ActorType,
+    string Action,
+    string EntityName,
+    string EntityId,
+    string Details,
+    DateTime CreatedAtUtc);
+
+internal sealed class IncidentReviewRequest
+{
+    public string ReviewNotes { get; set; } = string.Empty;
+}
+
+internal sealed class UpdateMonitoringRuleRequest
+{
+    public Guid SiteId { get; set; }
+    public Guid CameraId { get; set; }
+    public TimeOnly StartsAt { get; set; }
+    public TimeOnly EndsAt { get; set; }
+    public bool IsEnabled { get; set; }
+}
+
+internal sealed class UpdateCameraStateRequest
+{
+    public bool IsEnabled { get; set; }
+}

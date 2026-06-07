@@ -1,5 +1,4 @@
 @inherits LayoutComponentBase
-@inject OperationsSession Session
 @inject NavigationManager Navigation
 
 <div class="shell">
@@ -20,18 +19,22 @@
             <NavLink href="/audit">Auditoria</NavLink>
         </nav>
 
-        <div class="session">
-            @if (Session.IsAuthenticated)
-            {
-                <div class="session-user">@Session.UserName</div>
-                <div class="session-role">@Session.Role</div>
-                <button class="ghost" @onclick="Logout">Encerrar sessao</button>
-            }
-            else
-            {
-                <button class="ghost" @onclick="GoLogin">Entrar</button>
-            }
-        </div>
+        <AuthorizeView>
+            <Authorized Context="authState">
+                <div class="session">
+                    <div class="session-user">@authState.User.Identity?.Name</div>
+                    <div class="session-role">@authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</div>
+                    <form method="post" action="/operations/logout">
+                        <button class="ghost" type="submit">Encerrar sessao</button>
+                    </form>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="session">
+                    <button class="ghost" @onclick="GoLogin">Entrar</button>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </aside>
 
     <main class="content">
@@ -166,11 +169,5 @@
 </style>
 
 @code {
-    private void Logout()
-    {
-        Session.Logout();
-        Navigation.NavigateTo("/login", true);
-    }
-
     private void GoLogin() => Navigation.NavigateTo("/login");
 }

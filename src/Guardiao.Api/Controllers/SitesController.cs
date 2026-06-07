@@ -1,3 +1,4 @@
+using Guardiao.Api.Contracts;
 using Guardiao.Api.Infrastructure;
 using Guardiao.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -23,13 +24,11 @@ public class SitesController : ControllerBase
     {
         var items = await _dbContext.Set<Guardiao.Domain.Entities.Site>()
             .OrderBy(x => x.Name)
-            .Select(x => new
-            {
+            .Select(x => new SiteResponse(
                 x.Id,
                 x.InstitutionId,
                 x.Name,
-                x.AddressLine
-            })
+                x.AddressLine))
             .ToListAsync(cancellationToken);
 
         return Ok(items);

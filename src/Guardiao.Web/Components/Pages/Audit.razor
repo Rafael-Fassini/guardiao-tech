@@ -1,6 +1,7 @@
 @page "/audit"
 @attribute [Authorize(Roles = "auditor,admin,operator")]
 @inject OperationsPanelService PanelService
+@using Guardiao.Web.Services
 
 <PageTitle>Auditoria</PageTitle>
 <h1>Trilha de auditoria</h1>
@@ -52,7 +53,7 @@
 </style>
 
 @code {
-    private List<Guardiao.Domain.Entities.AuditLog> entries = [];
+    private List<AuditEntryModel> entries = [];
 
     protected override async Task OnInitializedAsync()
     {
