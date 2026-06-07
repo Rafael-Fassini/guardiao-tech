@@ -54,6 +54,7 @@ services:
       ObjectStorage__MaxObjectSizeBytes: ${OBJECT_STORAGE_MAX_OBJECT_SIZE_BYTES}
       ApiSecurity__EnableDebugHeaderAuthentication: ${API_ENABLE_DEBUG_HEADER_AUTHENTICATION}
       ApiSecurity__PanelSharedSecret: ${PANEL_API_SHARED_SECRET}
+      ApiSecurity__WorkerSharedSecret: ${WORKER_API_SHARED_SECRET}
       ApiSecurity__EnableSwaggerUi: ${API_ENABLE_SWAGGER_UI}
       ApiSecurity__MaxApiRequestBodyBytes: ${API_MAX_REQUEST_BODY_BYTES}
       ApiSecurity__MaxWebhookRequestBodyBytes: ${API_MAX_WEBHOOK_REQUEST_BODY_BYTES}
@@ -109,6 +110,9 @@ services:
       EdgeWorker__ProcessingTargetFps: ${EDGE_PROCESSING_TARGET_FPS}
       EdgeWorker__MatchThreshold: ${EDGE_MATCH_THRESHOLD}
       EdgeWorker__MinimumDetectionScore: ${EDGE_MINIMUM_DETECTION_SCORE}
+      EdgeWorker__ApiBaseUrl: ${WORKER_API_BASE_URL}
+      EdgeWorker__ApiSharedSecret: ${WORKER_API_SHARED_SECRET}
+      EdgeWorker__WorkerId: ${WORKER_ID}
       EdgeWorker__ReconnectDelayMilliseconds: ${EDGE_RECONNECT_DELAY_MS}
       Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
     ports:

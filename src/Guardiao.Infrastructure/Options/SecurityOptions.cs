@@ -9,6 +9,7 @@ public sealed class ApiSecurityOptions
 
     public bool EnableDebugHeaderAuthentication { get; set; }
     public string PanelSharedSecret { get; set; } = string.Empty;
+    public string WorkerSharedSecret { get; set; } = string.Empty;
     public bool EnableSwaggerUi { get; set; }
     public long MaxApiRequestBodyBytes { get; set; } = 64 * 1024;
     public long MaxWebhookRequestBodyBytes { get; set; } = 16 * 1024;

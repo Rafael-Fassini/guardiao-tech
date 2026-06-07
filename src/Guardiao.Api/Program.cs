@@ -57,6 +57,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(AuthorizationPolicies.RulesManage, policy => policy.RequireRole("admin", "operator"));
     options.AddPolicy(AuthorizationPolicies.IncidentsReview, policy => policy.RequireRole("operator"));
     options.AddPolicy(AuthorizationPolicies.AuditRead, policy => policy.RequireRole("admin", "auditor", "operator"));
+    options.AddPolicy(AuthorizationPolicies.CandidateEventsIngest, policy => policy.RequireRole("worker"));
 });
 builder.Services.AddRateLimiter(options =>
 {
@@ -157,6 +158,8 @@ builder.Services.AddSingleton<IRetentionPolicyProvider, RetentionPolicyProvider>
 builder.Services.AddScoped<INotificationPort, NoOpNotificationPort>();
 builder.Services.AddScoped<IWebhookSignatureVerifier, HmacSha256WebhookSignatureVerifier>();
 builder.Services.AddSingleton<SensitiveDataRedactor>();
+builder.Services.AddSingleton<ApiMetricsCollector>();
+builder.Services.AddSingleton<IMetricsPort>(sp => sp.GetRequiredService<ApiMetricsCollector>());
 builder.Services.AddScoped(sp => new CorrelationEngineOptions
 {
     CooldownWindow = TimeSpan.FromMinutes(5),
@@ -214,6 +217,11 @@ app.MapGet("/ready", async (GuardiaoDbContext dbContext, CancellationToken cance
         ? Results.Ok(new { status = "Ready" })
         : Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Dependency unavailable.");
 }).AllowAnonymous();
+app.MapGet("/metrics", (ApiMetricsCollector metrics) => Results.Ok(new
+{
+    counters = metrics.SnapshotCounters(),
+    gauges = metrics.SnapshotGauges()
+})).AllowAnonymous();
 
 app.Run();
 

@@ -19,6 +19,11 @@ public sealed class IncidentRepository : IIncidentRepository
         return _context.Incidents.FirstOrDefaultAsync(x => x.Id == incidentId, cancellationToken);
     }
 
+    public Task<Incident?> GetByCandidateEventIdAsync(Guid candidateEventId, CancellationToken cancellationToken = default)
+    {
+        return _context.Incidents.FirstOrDefaultAsync(x => x.CandidateEventId == candidateEventId, cancellationToken);
+    }
+
     public Task<Incident?> FindLatestActiveByCaseAsync(Guid protectedCaseId, CancellationToken cancellationToken = default)
     {
         return _context.Incidents

@@ -21,12 +21,21 @@ builder.Services.AddSingleton<FrameSamplerFactory>();
 builder.Services.AddSingleton<EdgeMetricsCollector>();
 builder.Services.AddSingleton<IMetricsPort>(sp => sp.GetRequiredService<EdgeMetricsCollector>());
 builder.Services.AddSingleton<IRestrictedGalleryProvider, RestrictedGalleryProvider>();
+builder.Services.AddSingleton(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<EdgeWorkerOptions>>().Value;
+    return new HttpClient
+    {
+        BaseAddress = new Uri(options.ApiBaseUrl),
+        Timeout = TimeSpan.FromSeconds(options.PublishTimeoutSeconds)
+    };
+});
 builder.Services.AddSingleton<ICameraCapturePort, AdaptiveCameraCaptureAdapter>();
 builder.Services.AddSingleton<IFaceDetectorPort, DeterministicFaceDetectorPort>();
 builder.Services.AddSingleton<IFaceTrackerPort, DeterministicFaceTrackerPort>();
 builder.Services.AddSingleton<IFaceEmbedderPort, DeterministicFaceEmbedderPort>();
 builder.Services.AddSingleton<IFaceMatcherPort, RestrictedGalleryMatcherPort>();
-builder.Services.AddSingleton<ICandidateEventPublisher, InMemoryCandidateEventPublisher>();
+builder.Services.AddSingleton<ICandidateEventPublisher, ApiCandidateEventPublisher>();
 builder.Services.AddSingleton<CameraPipelineSession>();
 builder.Services.AddHostedService<EdgeCameraWorkerService>();
 builder.Services.AddHostedService<EdgeHealthEndpointService>();

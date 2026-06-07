@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Guardiao.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1e0383eb355bb3713542f1704e4b91b041fe63d9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1e584221a41eb4201817364a523eaeda15b52877")]
 [assembly: System.Reflection.AssemblyProductAttribute("Guardiao.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Guardiao.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

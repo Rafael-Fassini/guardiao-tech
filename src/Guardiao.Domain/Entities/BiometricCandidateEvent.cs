@@ -14,13 +14,28 @@ public class BiometricCandidateEvent
         CameraScope cameraScope,
         MatchScore matchScore,
         DateTime occurredAtUtc)
+        : this(Guid.NewGuid(), protectedCaseId, cameraScope, matchScore, occurredAtUtc)
     {
+    }
+
+    public BiometricCandidateEvent(
+        Guid id,
+        Guid protectedCaseId,
+        CameraScope cameraScope,
+        MatchScore matchScore,
+        DateTime occurredAtUtc)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new InvariantViolationException("Candidate event id is required.");
+        }
+
         if (protectedCaseId == Guid.Empty)
         {
             throw new InvariantViolationException("Candidate event must reference a protected case.");
         }
 
-        Id = Guid.NewGuid();
+        Id = id;
         ProtectedCaseId = protectedCaseId;
         CameraScope = cameraScope;
         MatchScore = matchScore;

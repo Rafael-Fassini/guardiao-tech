@@ -39,6 +39,9 @@ public class CandidateEventCorrelationServiceTests
         var rules = new Mock<IMonitoringRuleRepository>();
         rules.Setup(x => x.ListByCaseAsync(protectedCase.Id, It.IsAny<CancellationToken>())).ReturnsAsync([rule]);
 
+        var candidateEvents = new Mock<ICandidateEventRepository>();
+        candidateEvents.Setup(x => x.GetByIdAsync(candidateEvent.Id, It.IsAny<CancellationToken>())).ReturnsAsync((BiometricCandidateEvent?)null);
+
         var incidents = new Mock<IIncidentRepository>();
         incidents.Setup(x => x.FindLatestActiveByCaseAsync(protectedCase.Id, It.IsAny<CancellationToken>())).ReturnsAsync((Incident?)null);
 
@@ -48,6 +51,7 @@ public class CandidateEventCorrelationServiceTests
         var service = CreateService(
             cases.Object,
             rules.Object,
+            candidateEvents.Object,
             incidents.Object,
             state.Object);
 
@@ -88,6 +92,9 @@ public class CandidateEventCorrelationServiceTests
         var rules = new Mock<IMonitoringRuleRepository>();
         rules.Setup(x => x.ListByCaseAsync(protectedCase.Id, It.IsAny<CancellationToken>())).ReturnsAsync([rule]);
 
+        var candidateEvents = new Mock<ICandidateEventRepository>();
+        candidateEvents.Setup(x => x.GetByIdAsync(candidateEvent.Id, It.IsAny<CancellationToken>())).ReturnsAsync((BiometricCandidateEvent?)null);
+
         var incidents = new Mock<IIncidentRepository>();
         var state = new Mock<IShortLivedStatePort>();
         state.Setup(x => x.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync("existing");
@@ -95,6 +102,7 @@ public class CandidateEventCorrelationServiceTests
         var service = CreateService(
             cases.Object,
             rules.Object,
+            candidateEvents.Object,
             incidents.Object,
             state.Object);
 
@@ -108,10 +116,10 @@ public class CandidateEventCorrelationServiceTests
     private static CandidateEventCorrelationService CreateService(
         ICaseProjectionRepository caseProjectionRepository,
         IMonitoringRuleRepository monitoringRuleRepository,
+        ICandidateEventRepository candidateEventRepository,
         IIncidentRepository incidentRepository,
         IShortLivedStatePort shortLivedStatePort)
     {
-        var candidateEvents = new Mock<ICandidateEventRepository>();
         var decisions = new Mock<ICorrelationDecisionRepository>();
         var notifications = new Mock<INotificationPort>();
         var audits = new Mock<IAuditLogRepository>();
@@ -121,7 +129,7 @@ public class CandidateEventCorrelationServiceTests
         return new CandidateEventCorrelationService(
             caseProjectionRepository,
             monitoringRuleRepository,
-            candidateEvents.Object,
+            candidateEventRepository,
             decisions.Object,
             incidentRepository,
             notifications.Object,

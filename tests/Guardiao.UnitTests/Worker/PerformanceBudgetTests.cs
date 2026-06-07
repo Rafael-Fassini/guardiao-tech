@@ -115,6 +115,8 @@ public class PerformanceBudgetTests
             .ReturnsAsync([rule]);
 
         var candidateRepo = new Mock<ICandidateEventRepository>();
+        candidateRepo.Setup(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((BiometricCandidateEvent?)null);
         var decisionRepo = new Mock<ICorrelationDecisionRepository>();
         var incidentRepo = new Mock<IIncidentRepository>();
         incidentRepo.Setup(x => x.FindLatestActiveByCaseAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

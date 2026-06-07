@@ -31,6 +31,7 @@ public interface ICaseProjectionRepository
 public interface IIncidentRepository
 {
     Task<Incident?> GetByIdAsync(Guid incidentId, CancellationToken cancellationToken = default);
+    Task<Incident?> GetByCandidateEventIdAsync(Guid candidateEventId, CancellationToken cancellationToken = default);
     Task<Incident?> FindLatestActiveByCaseAsync(Guid protectedCaseId, CancellationToken cancellationToken = default);
     Task AddAsync(Incident incident, CancellationToken cancellationToken = default);
     Task UpdateAsync(Incident incident, CancellationToken cancellationToken = default);
@@ -54,6 +55,7 @@ public interface ICorrelationDecisionRepository
 
 public interface ICandidateEventRepository
 {
+    Task<BiometricCandidateEvent?> GetByIdAsync(Guid candidateEventId, CancellationToken cancellationToken = default);
     Task AddAsync(BiometricCandidateEvent candidateEvent, CancellationToken cancellationToken = default);
 }
 

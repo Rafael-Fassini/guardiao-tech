@@ -23,6 +23,15 @@ public sealed class HeaderAuthenticationHandler : AuthenticationHandler<Authenti
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        var workerId = Request.Headers["X-Worker-Id"].FirstOrDefault();
+        var workerSecret = Request.Headers["X-Worker-Auth"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(_securityOptions.WorkerSharedSecret) &&
+            !string.IsNullOrWhiteSpace(workerId) &&
+            string.Equals(workerSecret, _securityOptions.WorkerSharedSecret, StringComparison.Ordinal))
+        {
+            return Task.FromResult(Success(workerId, "worker"));
+        }
+
         var panelSubject = Request.Headers["X-Panel-User"].FirstOrDefault();
         var panelSecret = Request.Headers["X-Panel-Auth"].FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(_securityOptions.PanelSharedSecret) &&

@@ -44,7 +44,27 @@ public sealed class CandidateEventCorrelationService
 
     public async Task<CorrelationResult> ConsumeAsync(BiometricCandidateEvent candidateEvent, CancellationToken cancellationToken = default)
     {
-        await _candidateEventRepository.AddAsync(candidateEvent, cancellationToken);
+        var existingCandidateEvent = await _candidateEventRepository.GetByIdAsync(candidateEvent.Id, cancellationToken);
+        if (existingCandidateEvent is not null)
+        {
+            var existingDecisions = await _correlationDecisionRepository.ListByCandidateEventAsync(candidateEvent.Id, cancellationToken);
+            if (existingDecisions.Count > 0)
+            {
+                var existingDecision = existingDecisions
+                    .OrderByDescending(x => x.CreatedAtUtc)
+                    .First();
+                var existingIncident = existingDecision.CreatesIncident
+                    ? await _incidentRepository.GetByCandidateEventIdAsync(candidateEvent.Id, cancellationToken)
+                    : null;
+                return new CorrelationResult(existingDecision, existingIncident, true);
+            }
+
+            candidateEvent = existingCandidateEvent;
+        }
+        else
+        {
+            await _candidateEventRepository.AddAsync(candidateEvent, cancellationToken);
+        }
 
         var protectedCase = await _caseProjectionRepository.GetByIdAsync(candidateEvent.ProtectedCaseId, cancellationToken);
         if (protectedCase is null)
@@ -120,4 +140,4 @@ public sealed class CandidateEventCorrelationService
     }
 }
 
-public sealed record CorrelationResult(CorrelationDecision Decision, Incident? Incident);
+public sealed record CorrelationResult(CorrelationDecision Decision, Incident? Incident, bool WasDuplicate = false);

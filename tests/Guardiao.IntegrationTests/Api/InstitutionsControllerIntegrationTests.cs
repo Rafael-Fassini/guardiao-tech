@@ -213,6 +213,7 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 ["VictimRegistry:ReconciliationPageSize"] = "100",
                 ["VictimRegistry:InitialLookbackMinutes"] = "5",
                 ["ApiSecurity:EnableDebugHeaderAuthentication"] = "true",
+                ["ApiSecurity:WorkerSharedSecret"] = "worker-test-secret",
                 ["ApiSecurity:EnableSwaggerUi"] = "false",
                 ["ApiSecurity:MaxApiRequestBodyBytes"] = "65536",
                 ["ApiSecurity:MaxWebhookRequestBodyBytes"] = "16384",

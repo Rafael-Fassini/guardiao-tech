@@ -13,6 +13,12 @@ public sealed class EdgeWorkerOptions
     public int ReconnectDelayMilliseconds { get; set; } = 250;
     public double MatchThreshold { get; set; } = 0.82;
     public double MinimumDetectionScore { get; set; } = 0.60;
+    public string ApiBaseUrl { get; set; } = "http://localhost:8080";
+    public string ApiSharedSecret { get; set; } = string.Empty;
+    public string WorkerId { get; set; } = "edge-worker";
+    public int PublishTimeoutSeconds { get; set; } = 10;
+    public int PublishRetryAttempts { get; set; } = 3;
+    public int PublishInitialRetryDelayMilliseconds { get; set; } = 250;
     public List<EdgeCameraOptions> Cameras { get; set; } = [];
     public List<RestrictedGallerySeedOptions> RestrictedGallery { get; set; } = [];
 }
@@ -75,6 +81,37 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
         if (options.MinimumDetectionScore is < 0 or > 1)
         {
             errors.Add("EdgeWorker:MinimumDetectionScore must be between 0 and 1.");
+        }
+
+        if (!Uri.TryCreate(options.ApiBaseUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            errors.Add("EdgeWorker:ApiBaseUrl must be an absolute http or https URL.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ApiSharedSecret))
+        {
+            errors.Add("EdgeWorker:ApiSharedSecret is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.WorkerId))
+        {
+            errors.Add("EdgeWorker:WorkerId is required.");
+        }
+
+        if (options.PublishTimeoutSeconds <= 0)
+        {
+            errors.Add("EdgeWorker:PublishTimeoutSeconds must be greater than zero.");
+        }
+
+        if (options.PublishRetryAttempts <= 0)
+        {
+            errors.Add("EdgeWorker:PublishRetryAttempts must be greater than zero.");
+        }
+
+        if (options.PublishInitialRetryDelayMilliseconds <= 0)
+        {
+            errors.Add("EdgeWorker:PublishInitialRetryDelayMilliseconds must be greater than zero.");
         }
 
         foreach (var camera in options.Cameras)
