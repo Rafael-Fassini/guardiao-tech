@@ -110,6 +110,8 @@ services:
       EdgeWorker__ProcessingTargetFps: ${EDGE_PROCESSING_TARGET_FPS}
       EdgeWorker__MatchThreshold: ${EDGE_MATCH_THRESHOLD}
       EdgeWorker__MinimumDetectionScore: ${EDGE_MINIMUM_DETECTION_SCORE}
+      EdgeWorker__DetectionModelPath: ${EDGE_DETECTION_MODEL_PATH}
+      EdgeWorker__EmbeddingModelPath: ${EDGE_EMBEDDING_MODEL_PATH}
       EdgeWorker__ApiBaseUrl: ${WORKER_API_BASE_URL}
       EdgeWorker__ApiSharedSecret: ${WORKER_API_SHARED_SECRET}
       EdgeWorker__WorkerId: ${WORKER_ID}
@@ -117,6 +119,8 @@ services:
       Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
     ports:
       - "${EDGE_HEALTH_PORT}:${EDGE_HEALTH_PORT}"
+    volumes:
+      - ./models:/app/models:ro
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:${EDGE_HEALTH_PORT}/health"]
       interval: 15s

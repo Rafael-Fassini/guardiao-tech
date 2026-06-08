@@ -23,7 +23,7 @@ public sealed class RestrictedGalleryProvider : IRestrictedGalleryProvider
                 x.PersonProjectionId,
                 x.ExternalPersonId,
                 x.IsBystander,
-                x.Embedding))
+                EmbeddingVectorMath.Normalize(x.Embedding)))
             .ToList();
     }
 

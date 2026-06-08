@@ -13,6 +13,19 @@ public sealed class EdgeWorkerOptions
     public int ReconnectDelayMilliseconds { get; set; } = 250;
     public double MatchThreshold { get; set; } = 0.82;
     public double MinimumDetectionScore { get; set; } = 0.60;
+    public string DetectionModelPath { get; set; } = "models/haarcascade_frontalface_default.xml";
+    public double DetectionScaleFactor { get; set; } = 1.1;
+    public int DetectionMinNeighbors { get; set; } = 4;
+    public int DetectionMinFaceSizePixels { get; set; } = 48;
+    public string EmbeddingModelPath { get; set; } = "models/face-embedding.onnx";
+    public string EmbeddingInputName { get; set; } = string.Empty;
+    public string EmbeddingOutputName { get; set; } = string.Empty;
+    public int EmbeddingInputWidth { get; set; } = 112;
+    public int EmbeddingInputHeight { get; set; } = 112;
+    public double EmbeddingPixelMean { get; set; } = 127.5;
+    public double EmbeddingPixelStdDev { get; set; } = 128.0;
+    public int OnnxIntraOpThreads { get; set; } = 1;
+    public int OnnxInterOpThreads { get; set; } = 1;
     public string ApiBaseUrl { get; set; } = "http://localhost:8080";
     public string ApiSharedSecret { get; set; } = string.Empty;
     public string WorkerId { get; set; } = "edge-worker";
@@ -81,6 +94,64 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
         if (options.MinimumDetectionScore is < 0 or > 1)
         {
             errors.Add("EdgeWorker:MinimumDetectionScore must be between 0 and 1.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.DetectionModelPath))
+        {
+            errors.Add("EdgeWorker:DetectionModelPath is required.");
+        }
+        else if (!File.Exists(options.DetectionModelPath))
+        {
+            errors.Add($"EdgeWorker:DetectionModelPath was not found at '{options.DetectionModelPath}'.");
+        }
+
+        if (options.DetectionScaleFactor <= 1.0)
+        {
+            errors.Add("EdgeWorker:DetectionScaleFactor must be greater than 1.");
+        }
+
+        if (options.DetectionMinNeighbors < 0)
+        {
+            errors.Add("EdgeWorker:DetectionMinNeighbors must be zero or greater.");
+        }
+
+        if (options.DetectionMinFaceSizePixels <= 0)
+        {
+            errors.Add("EdgeWorker:DetectionMinFaceSizePixels must be greater than zero.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.EmbeddingModelPath))
+        {
+            errors.Add("EdgeWorker:EmbeddingModelPath is required.");
+        }
+        else if (!File.Exists(options.EmbeddingModelPath))
+        {
+            errors.Add($"EdgeWorker:EmbeddingModelPath was not found at '{options.EmbeddingModelPath}'.");
+        }
+
+        if (options.EmbeddingInputWidth <= 0)
+        {
+            errors.Add("EdgeWorker:EmbeddingInputWidth must be greater than zero.");
+        }
+
+        if (options.EmbeddingInputHeight <= 0)
+        {
+            errors.Add("EdgeWorker:EmbeddingInputHeight must be greater than zero.");
+        }
+
+        if (options.EmbeddingPixelStdDev <= 0)
+        {
+            errors.Add("EdgeWorker:EmbeddingPixelStdDev must be greater than zero.");
+        }
+
+        if (options.OnnxIntraOpThreads <= 0)
+        {
+            errors.Add("EdgeWorker:OnnxIntraOpThreads must be greater than zero.");
+        }
+
+        if (options.OnnxInterOpThreads <= 0)
+        {
+            errors.Add("EdgeWorker:OnnxInterOpThreads must be greater than zero.");
         }
 
         if (!Uri.TryCreate(options.ApiBaseUrl, UriKind.Absolute, out var uri) ||

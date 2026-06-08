@@ -58,6 +58,22 @@ public class RestrictedGalleryMatcherTests
         Assert.True(result.IsBystander);
     }
 
+    [Fact]
+    public async Task MatchAsync_ShouldReturnZero_WhenGalleryIsEmpty()
+    {
+        var matcher = new RestrictedGalleryMatcherPort(
+            new RestrictedGalleryProvider(Options.Create(new EdgeWorkerOptions())),
+            new EdgeMetricsCollector(),
+            Options.Create(new EdgeWorkerOptions
+            {
+                MatchThreshold = 0.80
+            }));
+
+        var score = await matcher.MatchAsync(Enumerable.Repeat(0.5f, 16).ToArray(), Guid.NewGuid());
+
+        Assert.Equal(0, score.Value);
+    }
+
     private static RestrictedGalleryProvider CreateProvider(Guid protectedCaseId, Guid siteId, bool isBystander, float[] embedding)
     {
         return new RestrictedGalleryProvider(Options.Create(new EdgeWorkerOptions

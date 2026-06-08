@@ -378,6 +378,18 @@
             "Microsoft.Extensions.Hosting": {
               "target": "Package",
               "version": "[8.0.0, )"
+            },
+            "Microsoft.ML.OnnxRuntime": {
+              "target": "Package",
+              "version": "[1.26.0, )"
+            },
+            "OpenCvSharp4": {
+              "target": "Package",
+              "version": "[4.13.0.20260602, )"
+            },
+            "OpenCvSharp4.official.runtime.linux-x64.slim": {
+              "target": "Package",
+              "version": "[4.13.0.20260602, )"
             }
           },
           "imports": [

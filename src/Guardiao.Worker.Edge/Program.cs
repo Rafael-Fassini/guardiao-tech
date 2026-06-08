@@ -31,9 +31,9 @@ builder.Services.AddSingleton(sp =>
     };
 });
 builder.Services.AddSingleton<ICameraCapturePort, AdaptiveCameraCaptureAdapter>();
-builder.Services.AddSingleton<IFaceDetectorPort, DeterministicFaceDetectorPort>();
-builder.Services.AddSingleton<IFaceTrackerPort, DeterministicFaceTrackerPort>();
-builder.Services.AddSingleton<IFaceEmbedderPort, DeterministicFaceEmbedderPort>();
+builder.Services.AddSingleton<IFaceDetectorPort, OpenCvFaceDetectorPort>();
+builder.Services.AddSingleton<IFaceTrackerPort, PassthroughFaceTrackerPort>();
+builder.Services.AddSingleton<IFaceEmbedderPort, OnnxFaceEmbedderPort>();
 builder.Services.AddSingleton<IFaceMatcherPort, RestrictedGalleryMatcherPort>();
 builder.Services.AddSingleton<ICandidateEventPublisher, ApiCandidateEventPublisher>();
 builder.Services.AddSingleton<CameraPipelineSession>();
