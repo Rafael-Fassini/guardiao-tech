@@ -61,8 +61,12 @@ public interface ICandidateEventRepository
 
 public interface IBiometricTemplateRepository
 {
+    Task<BiometricTemplate?> GetByIdAsync(Guid biometricTemplateId, CancellationToken cancellationToken = default);
     Task AddAsync(BiometricTemplate biometricTemplate, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<BiometricTemplate>> ListByPersonAsync(Guid personProjectionId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<BiometricTemplate>> ListByCaseAsync(Guid protectedCaseId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<BiometricTemplate>> ListActiveByCaseAsync(Guid protectedCaseId, CancellationToken cancellationToken = default);
+    Task UpdateAsync(BiometricTemplate biometricTemplate, CancellationToken cancellationToken = default);
 }
 
 public interface IEvidenceStoragePort

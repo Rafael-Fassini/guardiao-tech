@@ -58,6 +58,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(AuthorizationPolicies.IncidentsReview, policy => policy.RequireRole("operator"));
     options.AddPolicy(AuthorizationPolicies.AuditRead, policy => policy.RequireRole("admin", "auditor", "operator"));
     options.AddPolicy(AuthorizationPolicies.CandidateEventsIngest, policy => policy.RequireRole("worker"));
+    options.AddPolicy(AuthorizationPolicies.BiometricGalleryRead, policy => policy.RequireRole("admin", "operator", "auditor", "worker"));
 });
 builder.Services.AddRateLimiter(options =>
 {
@@ -117,6 +118,11 @@ builder.Services
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<RetentionOptions>, RetentionOptionsValidator>();
 builder.Services
+    .AddOptions<BiometricProcessingOptions>()
+    .Bind(builder.Configuration.GetSection(BiometricProcessingOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<BiometricProcessingOptions>, BiometricProcessingOptionsValidator>();
+builder.Services
     .AddOptions<ApiSecurityOptions>()
     .Bind(builder.Configuration.GetSection(ApiSecurityOptions.SectionName))
     .ValidateOnStart();
@@ -157,6 +163,7 @@ builder.Services.AddSingleton<IShortLivedStatePort>(sp => sp.GetRequiredService<
 builder.Services.AddSingleton<IRetentionPolicyProvider, RetentionPolicyProvider>();
 builder.Services.AddScoped<INotificationPort, NoOpNotificationPort>();
 builder.Services.AddScoped<IWebhookSignatureVerifier, HmacSha256WebhookSignatureVerifier>();
+builder.Services.AddSingleton<IBiometricTemplateExtractor, OpenCvOnnxBiometricTemplateExtractor>();
 builder.Services.AddSingleton<SensitiveDataRedactor>();
 builder.Services.AddSingleton<ApiMetricsCollector>();
 builder.Services.AddSingleton<IMetricsPort>(sp => sp.GetRequiredService<ApiMetricsCollector>());

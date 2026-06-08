@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "operator,admin")]
 @inject OperationsPanelService PanelService
 @using Guardiao.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>Regras do caso</PageTitle>
 
@@ -12,6 +13,61 @@
 else
 {
     <h1>Regras do caso @item.ExternalCaseId</h1>
+
+    <section class="rule-card">
+        <div class="rule-head">
+            <strong>Biometria cadastrada</strong>
+            <span>@templates.Count item(ns)</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(uploadError))
+        {
+            <p class="panel-error">@uploadError</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(uploadSuccess))
+        {
+            <p class="panel-success">@uploadSuccess</p>
+        }
+        <div class="upload-row">
+            <InputFile OnChange="HandleFileSelected" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+            <button class="primary" type="button" @onclick="UploadBiometricAsync" disabled="@(selectedFile is null)">Enviar imagem</button>
+        </div>
+        @if (templates.Count == 0)
+        {
+            <p class="panel-empty">Nenhum template biometrico cadastrado.</p>
+        }
+        else
+        {
+            <table class="grid">
+                <thead>
+                    <tr>
+                        <th>Arquivo</th>
+                        <th>Origem</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var template in templates)
+                    {
+                        <tr>
+                            <td>@template.DisplayName</td>
+                            <td>@template.Source</td>
+                            <td>@template.ContentType</td>
+                            <td>@(template.IsActive ? "Ativo" : "Inativo")</td>
+                            <td>
+                                @if (template.IsActive)
+                                {
+                                    <button class="ghost" type="button" @onclick="@(() => DeactivateTemplateAsync(template.Id))">Desativar</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
     @foreach (var rule in rules)
     {
         var model = editModels[rule.Id];
@@ -92,6 +148,30 @@ else
         color: white;
         cursor: pointer;
     }
+
+    .ghost {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 10px 14px;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .upload-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+
+    .panel-error {
+        color: #912f2f;
+    }
+
+    .panel-success {
+        color: #1f6b3b;
+    }
 </style>
 
 @code {
@@ -99,12 +179,26 @@ else
 
     private ProtectedCaseDetailModel? item;
     private List<MonitoringRuleModel> rules = [];
+    private List<BiometricTemplateModel> templates = [];
     private readonly Dictionary<Guid, RuleEditModel> editModels = [];
+    private IBrowserFile? selectedFile;
+    private string? uploadError;
+    private string? uploadSuccess;
 
     protected override async Task OnParametersSetAsync()
     {
         item = await PanelService.GetCaseAsync(Id);
+        if (item is null)
+        {
+            rules = [];
+            templates = [];
+            editModels.Clear();
+            return;
+        }
+
         rules = await PanelService.ListRulesAsync(Id);
+        templates = await PanelService.ListBiometricTemplatesAsync(Id);
+        editModels.Clear();
         foreach (var rule in rules)
         {
             editModels[rule.Id] = new RuleEditModel(rule);
@@ -121,6 +215,43 @@ else
             TimeOnly.Parse(model.StartsAtText),
             TimeOnly.Parse(model.EndsAtText),
             model.Enabled);
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs args)
+    {
+        selectedFile = args.File;
+        uploadError = null;
+        uploadSuccess = null;
+    }
+
+    private async Task UploadBiometricAsync()
+    {
+        if (selectedFile is null)
+        {
+            uploadError = "Selecione uma imagem antes de enviar.";
+            uploadSuccess = null;
+            return;
+        }
+
+        try
+        {
+            await PanelService.UploadBiometricTemplateAsync(Id, selectedFile);
+            templates = await PanelService.ListBiometricTemplatesAsync(Id);
+            uploadSuccess = "Template biometrico cadastrado.";
+            uploadError = null;
+            selectedFile = null;
+        }
+        catch (Exception ex)
+        {
+            uploadError = ex.Message;
+            uploadSuccess = null;
+        }
+    }
+
+    private async Task DeactivateTemplateAsync(Guid templateId)
+    {
+        await PanelService.DeactivateBiometricTemplateAsync(Id, templateId);
+        templates = await PanelService.ListBiometricTemplatesAsync(Id);
     }
 
     private sealed class RuleEditModel

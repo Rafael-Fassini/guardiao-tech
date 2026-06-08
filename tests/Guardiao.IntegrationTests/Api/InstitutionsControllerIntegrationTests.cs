@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using Guardiao.Api;
 using Guardiao.Api.Contracts;
+using Guardiao.Api.Infrastructure;
 using Guardiao.Domain.Entities;
 using Guardiao.Domain.ValueObjects;
 using Guardiao.Infrastructure.Persistence;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 
@@ -181,8 +183,11 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
 public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
 {
     public const string WebhookSecret = "integration-secret";
+    private static readonly string DetectionModelPath = CreateTempFile(".xml", "<cascade/>");
+    private static readonly string EmbeddingModelPath = CreateTempFile(".onnx", "onnx-test");
 
     public FakeVictimRegistryHandler RegistryHandler { get; } = new();
+    public FakeBiometricTemplateExtractor BiometricExtractor { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -198,6 +203,8 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 options.UseInMemoryDatabase("GuardiaoIntegrationTests"));
 
             services.AddSingleton<HttpMessageHandler>(RegistryHandler);
+            services.RemoveAll<IBiometricTemplateExtractor>();
+            services.AddSingleton<IBiometricTemplateExtractor>(BiometricExtractor);
         });
 
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
@@ -215,6 +222,8 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 ["ApiSecurity:EnableDebugHeaderAuthentication"] = "true",
                 ["ApiSecurity:WorkerSharedSecret"] = "worker-test-secret",
                 ["ApiSecurity:EnableSwaggerUi"] = "false",
+                ["BiometricProcessing:DetectionModelPath"] = DetectionModelPath,
+                ["BiometricProcessing:EmbeddingModelPath"] = EmbeddingModelPath,
                 ["ApiSecurity:MaxApiRequestBodyBytes"] = "65536",
                 ["ApiSecurity:MaxWebhookRequestBodyBytes"] = "16384",
                 ["ApiSecurity:ApiWriteRateLimitPermitLimit"] = "100",
@@ -223,6 +232,35 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 ["ApiSecurity:WebhookRateLimitWindowSeconds"] = "60"
             });
         });
+    }
+
+    private static string CreateTempFile(string extension, string content)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}{extension}");
+        File.WriteAllText(path, content);
+        return path;
+    }
+}
+
+public sealed class FakeBiometricTemplateExtractor : IBiometricTemplateExtractor
+{
+    public bool ForceNoFace { get; set; }
+    public bool ForceMultipleFaces { get; set; }
+    public float[] Embedding { get; set; } = [0.1f, 0.2f, 0.3f, 0.4f];
+
+    public Task<BiometricExtractionResult> ExtractAsync(Stream imageStream, CancellationToken cancellationToken = default)
+    {
+        if (ForceNoFace)
+        {
+            throw new InvalidDataException("No face was detected in the uploaded image.");
+        }
+
+        if (ForceMultipleFaces)
+        {
+            throw new InvalidDataException("The uploaded image must contain a single face.");
+        }
+
+        return Task.FromResult(new BiometricExtractionResult(Embedding, 1));
     }
 }
 

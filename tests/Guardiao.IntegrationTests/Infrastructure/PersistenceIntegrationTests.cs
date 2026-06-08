@@ -52,7 +52,11 @@ public class PersistenceIntegrationTests
             new ExternalPersonId("person-template"),
             [0.1f, 0.2f, 0.3f],
             RetentionMode.CaseBound,
-            false);
+            false,
+            "upload",
+            "face.png",
+            "image/png",
+            "storage/face.png");
 
         await repository.AddAsync(template);
         var loaded = await repository.ListByPersonAsync(template.PersonProjectionId);

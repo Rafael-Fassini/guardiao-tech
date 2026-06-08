@@ -20,7 +20,6 @@ builder.Services.AddSingleton<BoundedCameraFrameQueue>();
 builder.Services.AddSingleton<FrameSamplerFactory>();
 builder.Services.AddSingleton<EdgeMetricsCollector>();
 builder.Services.AddSingleton<IMetricsPort>(sp => sp.GetRequiredService<EdgeMetricsCollector>());
-builder.Services.AddSingleton<IRestrictedGalleryProvider, RestrictedGalleryProvider>();
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<EdgeWorkerOptions>>().Value;
@@ -30,6 +29,8 @@ builder.Services.AddSingleton(sp =>
         Timeout = TimeSpan.FromSeconds(options.PublishTimeoutSeconds)
     };
 });
+builder.Services.AddSingleton<ApiRestrictedGalleryProvider>();
+builder.Services.AddSingleton<IRestrictedGalleryProvider>(sp => sp.GetRequiredService<ApiRestrictedGalleryProvider>());
 builder.Services.AddSingleton<ICameraCapturePort, AdaptiveCameraCaptureAdapter>();
 builder.Services.AddSingleton<IFaceDetectorPort, OpenCvFaceDetectorPort>();
 builder.Services.AddSingleton<IFaceTrackerPort, PassthroughFaceTrackerPort>();
@@ -38,6 +39,7 @@ builder.Services.AddSingleton<IFaceMatcherPort, RestrictedGalleryMatcherPort>();
 builder.Services.AddSingleton<ICandidateEventPublisher, ApiCandidateEventPublisher>();
 builder.Services.AddSingleton<CameraPipelineSession>();
 builder.Services.AddHostedService<EdgeCameraWorkerService>();
+builder.Services.AddHostedService<GalleryRefreshBackgroundService>();
 builder.Services.AddHostedService<EdgeHealthEndpointService>();
 
 var host = builder.Build();

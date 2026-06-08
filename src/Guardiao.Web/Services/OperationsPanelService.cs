@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Guardiao.Web.Services;
@@ -29,6 +30,9 @@ public sealed class OperationsPanelService
 
     public async Task<ProtectedCaseDetailModel?> GetCaseAsync(Guid id, CancellationToken cancellationToken = default)
         => await GetOptionalAsync<ProtectedCaseDetailModel>($"/api/cases/{id}", cancellationToken);
+
+    public async Task<List<BiometricTemplateModel>> ListBiometricTemplatesAsync(Guid protectedCaseId, CancellationToken cancellationToken = default)
+        => await GetRequiredAsync<List<BiometricTemplateModel>>($"/api/cases/{protectedCaseId}/biometrics", cancellationToken);
 
     public async Task<List<MonitoringRuleModel>> ListRulesAsync(Guid protectedCaseId, CancellationToken cancellationToken = default)
         => await GetRequiredAsync<List<MonitoringRuleModel>>($"/api/cases/{protectedCaseId}/rules", cancellationToken);
@@ -86,6 +90,29 @@ public sealed class OperationsPanelService
             $"/api/cameras/{cameraId}/state",
             new UpdateCameraStateRequest { IsEnabled = enabled },
             cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<BiometricTemplateUploadModel> UploadBiometricTemplateAsync(Guid protectedCaseId, IBrowserFile file, CancellationToken cancellationToken = default)
+    {
+        await EnsureAuthenticatedAsync();
+
+        using var form = new MultipartFormDataContent();
+        await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024, cancellationToken);
+        using var content = new StreamContent(stream);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+        form.Add(content, "file", file.Name);
+
+        using var response = await _httpClient.PostAsync($"/api/cases/{protectedCaseId}/biometrics", form, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<BiometricTemplateUploadModel>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("Response payload was empty for biometric upload.");
+    }
+
+    public async Task DeactivateBiometricTemplateAsync(Guid protectedCaseId, Guid templateId, CancellationToken cancellationToken = default)
+    {
+        await EnsureAuthenticatedAsync();
+        using var response = await _httpClient.DeleteAsync($"/api/cases/{protectedCaseId}/biometrics/{templateId}", cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 

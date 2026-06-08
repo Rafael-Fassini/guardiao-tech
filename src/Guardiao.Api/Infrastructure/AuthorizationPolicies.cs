@@ -9,4 +9,5 @@ public static class AuthorizationPolicies
     public const string IncidentsReview = "IncidentsReview";
     public const string AuditRead = "AuditRead";
     public const string CandidateEventsIngest = "CandidateEventsIngest";
+    public const string BiometricGalleryRead = "BiometricGalleryRead";
 }

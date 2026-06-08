@@ -19,5 +19,6 @@ public class MigrationMetadataTests
         var migrations = context.Database.GetMigrations().ToArray();
 
         Assert.Contains("202605120401_InitialPersistence", migrations);
+        Assert.Contains("202606080930_AddBiometricTemplateMetadata", migrations);
     }
 }

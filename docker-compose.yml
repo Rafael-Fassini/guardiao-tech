@@ -52,6 +52,8 @@ services:
       ObjectStorage__RootPath: ${OBJECT_STORAGE_ROOT_PATH}
       ObjectStorage__BucketName: ${OBJECT_STORAGE_BUCKET}
       ObjectStorage__MaxObjectSizeBytes: ${OBJECT_STORAGE_MAX_OBJECT_SIZE_BYTES}
+      BiometricProcessing__DetectionModelPath: ${BIOMETRIC_DETECTION_MODEL_PATH}
+      BiometricProcessing__EmbeddingModelPath: ${BIOMETRIC_EMBEDDING_MODEL_PATH}
       ApiSecurity__EnableDebugHeaderAuthentication: ${API_ENABLE_DEBUG_HEADER_AUTHENTICATION}
       ApiSecurity__PanelSharedSecret: ${PANEL_API_SHARED_SECRET}
       ApiSecurity__WorkerSharedSecret: ${WORKER_API_SHARED_SECRET}
@@ -72,6 +74,7 @@ services:
       retries: 10
     volumes:
       - object-storage-data:${OBJECT_STORAGE_ROOT_PATH}
+      - ./models:/app/models:ro
 
   web:
     build:
@@ -115,6 +118,7 @@ services:
       EdgeWorker__ApiBaseUrl: ${WORKER_API_BASE_URL}
       EdgeWorker__ApiSharedSecret: ${WORKER_API_SHARED_SECRET}
       EdgeWorker__WorkerId: ${WORKER_ID}
+      EdgeWorker__GalleryRefreshIntervalSeconds: ${EDGE_GALLERY_REFRESH_INTERVAL_SECONDS}
       EdgeWorker__ReconnectDelayMilliseconds: ${EDGE_RECONNECT_DELAY_MS}
       Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
     ports:

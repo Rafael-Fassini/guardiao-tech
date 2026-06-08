@@ -26,6 +26,14 @@ dotnet run --project src/Guardiao.Worker.Edge
 - Start infrastructure and apps with `docker compose up -d`
 - Run `bash scripts/post-deploy-smoke.sh`
 
+## Biometric Enrollment Flow
+- Open the operations panel and navigate to a case detail page.
+- Upload one supported biometric image (`.jpg`, `.jpeg`, `.png`, `.webp`) for the protected person.
+- The API validates the image, detects a single face, generates an embedding and stores:
+  - the original image in object storage
+  - the normalized biometric template in the database
+- The worker refreshes its gallery from the API and uses active templates in the main matching path.
+
 ## Edge Inference Models
 - Detection model path:
   - local default: `models/haarcascade_frontalface_default.xml`
@@ -34,7 +42,8 @@ dotnet run --project src/Guardiao.Worker.Edge
   - local default: `models/face-embedding.onnx`
   - docker default: `/app/models/face-embedding.onnx`
 - The worker uses OpenCV for face detection and ONNX Runtime for embedding generation.
-- The repository does not include binary model artifacts; supply them before starting `Guardiao.Worker.Edge`.
+- The API uses the same model family for enrollment-time extraction.
+- The repository does not include binary model artifacts; supply them before starting `Guardiao.Api` and `Guardiao.Worker.Edge`.
 
 ## Operations Artifacts
 - Deployment topology: `docs/deployment-pilot.md`

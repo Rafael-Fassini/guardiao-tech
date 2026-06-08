@@ -54,6 +54,25 @@ public sealed record ProtectedCaseDetailModel(
     string LastSyncStatus,
     string? LastSyncFailureReason);
 
+public sealed record BiometricTemplateModel(
+    Guid Id,
+    Guid PersonProjectionId,
+    string ExternalPersonId,
+    string Source,
+    string DisplayName,
+    string ContentType,
+    bool IsActive,
+    DateTime CreatedAt,
+    DateTime? DeactivatedAtUtc);
+
+public sealed record BiometricTemplateUploadModel(
+    Guid Id,
+    Guid PersonProjectionId,
+    string ExternalPersonId,
+    string DisplayName,
+    string ContentType,
+    DateTime CreatedAt);
+
 public sealed record MonitoringRuleModel(
     Guid Id,
     Guid SiteId,

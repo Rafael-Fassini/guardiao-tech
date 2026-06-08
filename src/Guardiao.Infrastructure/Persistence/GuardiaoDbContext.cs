@@ -101,6 +101,11 @@ public class GuardiaoDbContext : DbContext
                     x => x.Split(';', StringSplitOptions.RemoveEmptyEntries)
                         .Select(v => float.Parse(v, CultureInfo.InvariantCulture))
                         .ToArray());
+            entity.Property(x => x.Source);
+            entity.Property(x => x.DisplayName);
+            entity.Property(x => x.ContentType);
+            entity.Property(x => x.StoragePath);
+            entity.Property(x => x.IsActive);
         });
 
         modelBuilder.Entity<EvidenceArtifact>(entity =>

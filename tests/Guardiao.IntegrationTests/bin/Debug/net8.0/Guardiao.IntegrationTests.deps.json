@@ -1939,6 +1939,9 @@
           "Guardiao.Domain": "1.0.0",
           "Guardiao.Infrastructure": "1.0.0",
           "Microsoft.AspNetCore.OpenApi": "8.0.0",
+          "Microsoft.ML.OnnxRuntime": "1.26.0",
+          "OpenCvSharp4": "4.13.0.20260602",
+          "OpenCvSharp4.official.runtime.linux-x64.slim": "4.13.0.20260602",
           "Swashbuckle.AspNetCore": "6.5.0"
         },
         "runtime": {

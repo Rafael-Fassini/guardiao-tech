@@ -16,7 +16,11 @@ public class BiometricTemplateTests
                 new ExternalPersonId("person-1"),
                 [0.1f, 0.2f],
                 RetentionMode.CaseBound,
-                false));
+                false,
+                "upload",
+                "face.png",
+                "image/png",
+                "bucket/face.png"));
     }
 
     [Fact]
@@ -28,6 +32,30 @@ public class BiometricTemplateTests
                 new ExternalPersonId("person-1"),
                 [0.1f, 0.2f],
                 RetentionMode.CaseBound,
-                true));
+                true,
+                "upload",
+                "face.png",
+                "image/png",
+                "bucket/face.png"));
+    }
+
+    [Fact]
+    public void Deactivate_ShouldMarkTemplateInactive()
+    {
+        var template = new BiometricTemplate(
+            Guid.NewGuid(),
+            new ExternalPersonId("person-1"),
+            [0.1f, 0.2f],
+            RetentionMode.CaseBound,
+            false,
+            "upload",
+            "face.png",
+            "image/png",
+            "bucket/face.png");
+
+        template.Deactivate();
+
+        Assert.False(template.IsActive);
+        Assert.NotNull(template.DeactivatedAtUtc);
     }
 }

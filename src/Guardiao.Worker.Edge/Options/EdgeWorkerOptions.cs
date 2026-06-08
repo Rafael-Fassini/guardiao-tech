@@ -32,6 +32,7 @@ public sealed class EdgeWorkerOptions
     public int PublishTimeoutSeconds { get; set; } = 10;
     public int PublishRetryAttempts { get; set; } = 3;
     public int PublishInitialRetryDelayMilliseconds { get; set; } = 250;
+    public int GalleryRefreshIntervalSeconds { get; set; } = 30;
     public List<EdgeCameraOptions> Cameras { get; set; } = [];
     public List<RestrictedGallerySeedOptions> RestrictedGallery { get; set; } = [];
 }
@@ -183,6 +184,11 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
         if (options.PublishInitialRetryDelayMilliseconds <= 0)
         {
             errors.Add("EdgeWorker:PublishInitialRetryDelayMilliseconds must be greater than zero.");
+        }
+
+        if (options.GalleryRefreshIntervalSeconds <= 0)
+        {
+            errors.Add("EdgeWorker:GalleryRefreshIntervalSeconds must be greater than zero.");
         }
 
         foreach (var camera in options.Cameras)

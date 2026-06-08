@@ -1,4 +1,5 @@
 using Guardiao.Web.Services;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -88,5 +89,58 @@ public class OperationsPanelCriticalFlowTests
 
         Assert.False(camera.IsEnabled);
         Assert.Equal("camera.state.updated", auditEntry.Action);
+    }
+
+    [Fact]
+    public async Task UploadAndDeactivateBiometricTemplate_ShouldCallApiAndUpdateBackendState()
+    {
+        using var factory = new GuardiaoWebFactory("operator.ana", "operator");
+        var caseId = Guid.NewGuid();
+        factory.ApiHandler.Cases.Add(new ProtectedCaseState
+        {
+            Id = caseId,
+            ExternalCaseId = "case-bio",
+            Version = 1,
+            MonitoringStatus = "enabled",
+            ConsentStatus = "granted",
+            PersonProjectionId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            LastSynchronizedAt = DateTime.UtcNow,
+            LastSyncStatus = "ok"
+        });
+
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<OperationsPanelService>();
+
+        var uploaded = await service.UploadBiometricTemplateAsync(caseId, new TestBrowserFile("face.png", "image/png", [1, 2, 3, 4]));
+        await service.DeactivateBiometricTemplateAsync(caseId, uploaded.Id);
+
+        var template = factory.ApiHandler.BiometricTemplates.Single(x => x.Id == uploaded.Id);
+        Assert.False(template.IsActive);
+        Assert.Contains(factory.ApiHandler.AuditEntries, x => x.Action == "biometric_template.created" && x.EntityId == uploaded.Id.ToString());
+        Assert.Contains(factory.ApiHandler.AuditEntries, x => x.Action == "biometric_template.deactivated" && x.EntityId == uploaded.Id.ToString());
+    }
+
+    private sealed class TestBrowserFile : IBrowserFile
+    {
+        private readonly byte[] _content;
+
+        public TestBrowserFile(string name, string contentType, byte[] content)
+        {
+            Name = name;
+            ContentType = contentType;
+            _content = content;
+            LastModified = DateTimeOffset.UtcNow;
+        }
+
+        public DateTimeOffset LastModified { get; }
+        public string Name { get; }
+        public long Size => _content.LongLength;
+        public string ContentType { get; }
+
+        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
+        {
+            return new MemoryStream(_content, writable: false);
+        }
     }
 }

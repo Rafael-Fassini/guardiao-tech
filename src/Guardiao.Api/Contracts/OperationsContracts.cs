@@ -56,6 +56,33 @@ public sealed record ProtectedCaseDetailResponse(
     string LastSyncStatus,
     string? LastSyncFailureReason);
 
+public sealed record BiometricTemplateResponse(
+    Guid Id,
+    Guid PersonProjectionId,
+    string ExternalPersonId,
+    string Source,
+    string DisplayName,
+    string ContentType,
+    bool IsActive,
+    DateTime CreatedAt,
+    DateTime? DeactivatedAtUtc);
+
+public sealed record BiometricTemplateUploadResponse(
+    Guid Id,
+    Guid PersonProjectionId,
+    string ExternalPersonId,
+    string DisplayName,
+    string ContentType,
+    DateTime CreatedAt);
+
+public sealed record BiometricGalleryEntryResponse(
+    Guid ProtectedCaseId,
+    Guid SiteId,
+    Guid PersonProjectionId,
+    string ExternalPersonId,
+    bool IsBystander,
+    IReadOnlyCollection<float> Embedding);
+
 public sealed record MonitoringRuleResponse(
     Guid Id,
     Guid SiteId,

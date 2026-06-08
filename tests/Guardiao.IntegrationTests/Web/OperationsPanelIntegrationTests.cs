@@ -255,6 +255,7 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
     public List<SiteState> Sites { get; } = [];
     public List<CameraState> Cameras { get; } = [];
     public List<AuditEntryState> AuditEntries { get; } = [];
+    public List<BiometricTemplateState> BiometricTemplates { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -323,6 +324,87 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
             var id = Guid.Parse(segments[2]);
             var item = Cases.FirstOrDefault(x => x.Id == id);
             return item is null ? new HttpResponseMessage(HttpStatusCode.NotFound) : Json(item.ToDetailModel());
+        }
+
+        if (request.Method == HttpMethod.Get && segments.Length == 4 && segments[0] == "api" && segments[1] == "cases" && segments[3] == "biometrics")
+        {
+            var caseId = Guid.Parse(segments[2]);
+            var item = Cases.FirstOrDefault(x => x.Id == caseId);
+            if (item is null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            return Json(BiometricTemplates
+                .Where(x => x.PersonProjectionId == item.PersonProjectionId)
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => x.ToModel())
+                .ToArray());
+        }
+
+        if (request.Method == HttpMethod.Post && segments.Length == 4 && segments[0] == "api" && segments[1] == "cases" && segments[3] == "biometrics")
+        {
+            var caseId = Guid.Parse(segments[2]);
+            var item = Cases.FirstOrDefault(x => x.Id == caseId);
+            if (item is null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            var template = new BiometricTemplateState
+            {
+                Id = Guid.NewGuid(),
+                PersonProjectionId = item.PersonProjectionId,
+                ExternalPersonId = "person-upload",
+                Source = "panel_upload",
+                DisplayName = "uploaded-face.png",
+                ContentType = "image/png",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            BiometricTemplates.Add(template);
+
+            AuditEntries.Add(new AuditEntryState
+            {
+                Id = Guid.NewGuid(),
+                ActorType = "Operator",
+                Action = "biometric_template.created",
+                EntityName = "BiometricTemplate",
+                EntityId = template.Id.ToString(),
+                Details = $"case_id={caseId}",
+                CreatedAtUtc = DateTime.UtcNow
+            });
+
+            return new HttpResponseMessage(HttpStatusCode.Created)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(template.ToUploadModel()), Encoding.UTF8, "application/json")
+            };
+        }
+
+        if (request.Method == HttpMethod.Delete && segments.Length == 5 && segments[0] == "api" && segments[1] == "cases" && segments[3] == "biometrics")
+        {
+            var templateId = Guid.Parse(segments[4]);
+            var template = BiometricTemplates.FirstOrDefault(x => x.Id == templateId);
+            if (template is null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            template.IsActive = false;
+            template.DeactivatedAtUtc = DateTime.UtcNow;
+
+            AuditEntries.Add(new AuditEntryState
+            {
+                Id = Guid.NewGuid(),
+                ActorType = "Operator",
+                Action = "biometric_template.deactivated",
+                EntityName = "BiometricTemplate",
+                EntityId = template.Id.ToString(),
+                Details = "active=false",
+                CreatedAtUtc = DateTime.UtcNow
+            });
+
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
         }
 
         if (request.Method == HttpMethod.Get && segments.Length == 4 && segments[0] == "api" && segments[1] == "cases" && segments[3] == "rules")
@@ -470,6 +552,25 @@ public sealed class MonitoringRuleState
 
     public MonitoringRuleModel ToModel()
         => new(Id, SiteId, CameraId, StartsAt, EndsAt, IsEnabled);
+}
+
+public sealed class BiometricTemplateState
+{
+    public Guid Id { get; set; }
+    public Guid PersonProjectionId { get; set; }
+    public string ExternalPersonId { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? DeactivatedAtUtc { get; set; }
+
+    public BiometricTemplateModel ToModel()
+        => new(Id, PersonProjectionId, ExternalPersonId, Source, DisplayName, ContentType, IsActive, CreatedAt, DeactivatedAtUtc);
+
+    public BiometricTemplateUploadModel ToUploadModel()
+        => new(Id, PersonProjectionId, ExternalPersonId, DisplayName, ContentType, CreatedAt);
 }
 
 public sealed class SiteState
