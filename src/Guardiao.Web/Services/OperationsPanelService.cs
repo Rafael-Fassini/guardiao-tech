@@ -25,6 +25,19 @@ public sealed class OperationsPanelService
     public async Task<IncidentDetailModel?> GetIncidentAsync(Guid id, CancellationToken cancellationToken = default)
         => await GetOptionalAsync<IncidentDetailModel>($"/api/incidents/{id}", cancellationToken);
 
+    public async Task<List<IncidentEvidenceModel>> ListIncidentEvidencesAsync(Guid incidentId, CancellationToken cancellationToken = default)
+        => await GetRequiredAsync<List<IncidentEvidenceModel>>($"/api/incidents/{incidentId}/evidences", cancellationToken);
+
+    public async Task<string> GetIncidentEvidenceDataUrlAsync(Guid incidentId, Guid evidenceId, string contentType, CancellationToken cancellationToken = default)
+    {
+        await EnsureAuthenticatedAsync();
+        using var response = await _httpClient.GetAsync($"/api/incidents/{incidentId}/evidences/{evidenceId}/content", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var effectiveContentType = response.Content.Headers.ContentType?.MediaType ?? contentType;
+        return $"data:{effectiveContentType};base64,{Convert.ToBase64String(bytes)}";
+    }
+
     public async Task<List<ProtectedCaseListItemModel>> ListCasesAsync(CancellationToken cancellationToken = default)
         => await GetRequiredAsync<List<ProtectedCaseListItemModel>>("/api/cases", cancellationToken);
 

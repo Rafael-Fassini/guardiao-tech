@@ -70,13 +70,14 @@ public class IncidentsController : ControllerBase
             return NotFound();
         }
 
+        var evidenceCount = await _dbContext.EvidenceArtifacts.CountAsync(x => x.IncidentId == incident.Id, cancellationToken);
         incident.ConfirmReview(request.ReviewNotes);
         _dbContext.AuditLogs.Add(new AuditLog(
             AuditActorType.Operator,
             "incident.review.confirmed",
             nameof(Incident),
             incident.Id.ToString(),
-            $"status={IncidentStatus.Confirmed}"));
+            $"status={IncidentStatus.Confirmed};evidence_count={evidenceCount}"));
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Ok(new IncidentDetailResponse(
@@ -101,13 +102,14 @@ public class IncidentsController : ControllerBase
             return NotFound();
         }
 
+        var evidenceCount = await _dbContext.EvidenceArtifacts.CountAsync(x => x.IncidentId == incident.Id, cancellationToken);
         incident.Dismiss(request.ReviewNotes);
         _dbContext.AuditLogs.Add(new AuditLog(
             AuditActorType.Operator,
             "incident.review.dismissed",
             nameof(Incident),
             incident.Id.ToString(),
-            $"status={IncidentStatus.Dismissed}"));
+            $"status={IncidentStatus.Dismissed};evidence_count={evidenceCount}"));
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Ok(new IncidentDetailResponse(

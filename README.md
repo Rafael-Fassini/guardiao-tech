@@ -34,6 +34,15 @@ dotnet run --project src/Guardiao.Worker.Edge
   - the normalized biometric template in the database
 - The worker refreshes its gallery from the API and uses active templates in the main matching path.
 
+## Incident Evidence Flow
+- When the worker produces an eligible candidate event, it generates two pilot-oriented visual artifacts whenever possible:
+  - a reduced frame snapshot from the detection moment
+  - the face crop used for embedding generation
+- The worker sends these artifacts with the candidate event payload to the API.
+- The API stores the files in object storage and persists `EvidenceArtifact` metadata linked to the created incident.
+- The operations panel loads incident evidence from the API only and renders snapshots/crops on the incident detail page.
+- Retention currently follows `RetentionMode.CaseBound` for incident evidence created in the pilot.
+
 ## Edge Inference Models
 - Detection model path:
   - local default: `models/haarcascade_frontalface_default.xml`
@@ -44,6 +53,14 @@ dotnet run --project src/Guardiao.Worker.Edge
 - The worker uses OpenCV for face detection and ONNX Runtime for embedding generation.
 - The API uses the same model family for enrollment-time extraction.
 - The repository does not include binary model artifacts; supply them before starting `Guardiao.Api` and `Guardiao.Worker.Edge`.
+
+## Evidence Storage Notes
+- Object storage defaults to the configured `ObjectStorage:RootPath`.
+- Evidence download is exposed through authenticated API endpoints under `/api/incidents/{incidentId}/evidences`.
+- The browser does not access raw storage paths directly.
+- Current pilot limitation:
+  - evidence is stored only for candidate events that reach the publish path and become associated with an incident
+  - evidence rendering in the web panel is optimized for small pilot snapshots/crops, not bulk media review
 
 ## Operations Artifacts
 - Deployment topology: `docs/deployment-pilot.md`

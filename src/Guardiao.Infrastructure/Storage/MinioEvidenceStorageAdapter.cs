@@ -28,6 +28,23 @@ public sealed class MinioEvidenceStorageAdapter : IEvidenceStoragePort
         return objectKey;
     }
 
+    public Task<Stream> OpenReadAsync(string storagePath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(storagePath))
+        {
+            throw new ArgumentException("Storage path is required.", nameof(storagePath));
+        }
+
+        var fullPath = Path.Combine(_options.RootPath, storagePath.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException("Stored evidence object was not found.", fullPath);
+        }
+
+        Stream stream = File.OpenRead(fullPath);
+        return Task.FromResult(stream);
+    }
+
     private void Validate(string fileName, string contentType)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();

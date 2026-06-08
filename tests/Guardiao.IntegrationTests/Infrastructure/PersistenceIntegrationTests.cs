@@ -78,9 +78,12 @@ public class PersistenceIntegrationTests
 
         await using var content = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("evidence"));
         var objectKey = await adapter.StoreAsync(content, "evidence.jpg", "image/jpeg");
+        await using var stored = await adapter.OpenReadAsync(objectKey);
 
         var fullPath = Path.Combine(root, objectKey.Replace('/', Path.DirectorySeparatorChar));
         Assert.True(File.Exists(fullPath));
+        using var reader = new StreamReader(stored);
+        Assert.Equal("evidence", await reader.ReadToEndAsync());
     }
 
     [Fact]

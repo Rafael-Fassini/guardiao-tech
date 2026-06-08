@@ -31,6 +31,7 @@ builder.Services.AddSingleton(sp =>
 });
 builder.Services.AddSingleton<ApiRestrictedGalleryProvider>();
 builder.Services.AddSingleton<IRestrictedGalleryProvider>(sp => sp.GetRequiredService<ApiRestrictedGalleryProvider>());
+builder.Services.AddSingleton<CandidateEventEvidenceFactory>();
 builder.Services.AddSingleton<ICameraCapturePort, AdaptiveCameraCaptureAdapter>();
 builder.Services.AddSingleton<IFaceDetectorPort, OpenCvFaceDetectorPort>();
 builder.Services.AddSingleton<IFaceTrackerPort, PassthroughFaceTrackerPort>();

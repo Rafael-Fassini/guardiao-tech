@@ -224,7 +224,7 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 ["ApiSecurity:EnableSwaggerUi"] = "false",
                 ["BiometricProcessing:DetectionModelPath"] = DetectionModelPath,
                 ["BiometricProcessing:EmbeddingModelPath"] = EmbeddingModelPath,
-                ["ApiSecurity:MaxApiRequestBodyBytes"] = "65536",
+                ["ApiSecurity:MaxApiRequestBodyBytes"] = "1048576",
                 ["ApiSecurity:MaxWebhookRequestBodyBytes"] = "16384",
                 ["ApiSecurity:ApiWriteRateLimitPermitLimit"] = "100",
                 ["ApiSecurity:ApiWriteRateLimitWindowSeconds"] = "60",

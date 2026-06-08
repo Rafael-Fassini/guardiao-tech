@@ -5,6 +5,7 @@ using Guardiao.Worker.Edge.Adapters;
 using Guardiao.Worker.Edge.Options;
 using Guardiao.Worker.Edge.Pipeline;
 using Guardiao.Worker.Edge.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Guardiao.IntegrationTests.Worker;
@@ -48,6 +49,10 @@ public sealed class ApprovedCameraReplayHarness
             new RestrictedGalleryMatcherPort(galleryProvider, metrics, Options.Create(options)),
             publisher,
             galleryProvider,
+            new CandidateEventEvidenceFactory(
+                Options.Create(options),
+                metrics,
+                NullLogger<CandidateEventEvidenceFactory>.Instance),
             new BoundedCameraFrameQueue(),
             metrics,
             new SystemClock(),

@@ -13,6 +13,11 @@ public sealed class ApiMetricsCollector : IMetricsPort
         _counters.AddOrUpdate(FormatKey(name, tags), 1, (_, current) => current + 1);
     }
 
+    public void AddCounter(string name, double value, params (string Key, string Value)[] tags)
+    {
+        _counters.AddOrUpdate(FormatKey(name, tags), value, (_, current) => current + value);
+    }
+
     public void RecordLatency(string name, TimeSpan elapsed, params (string Key, string Value)[] tags)
     {
         _gauges[FormatKey(name, tags)] = elapsed.TotalMilliseconds;

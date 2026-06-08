@@ -122,6 +122,7 @@ partial class GuardiaoDbContextModelSnapshot : ModelSnapshot
             entity.ToTable("EvidenceArtifacts");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.ArtifactType).HasConversion<string>();
+            entity.Property(x => x.ContentType);
             entity.Property(x => x.RetentionMode)
                 .HasConversion(x => x.Value, x => new RetentionMode(x));
         });

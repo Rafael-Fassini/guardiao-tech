@@ -68,7 +68,10 @@ public sealed class InMemoryCandidateEventPublisher : ICandidateEventPublisher
     private readonly List<BiometricCandidateEvent> _events = [];
     private readonly object _sync = new();
 
-    public Task PublishAsync(BiometricCandidateEvent candidateEvent, CancellationToken cancellationToken = default)
+    public Task PublishAsync(
+        BiometricCandidateEvent candidateEvent,
+        IReadOnlyCollection<CandidateEventEvidencePayload>? evidences = null,
+        CancellationToken cancellationToken = default)
     {
         lock (_sync)
         {

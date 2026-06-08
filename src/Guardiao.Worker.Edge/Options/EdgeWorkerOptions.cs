@@ -33,6 +33,8 @@ public sealed class EdgeWorkerOptions
     public int PublishRetryAttempts { get; set; } = 3;
     public int PublishInitialRetryDelayMilliseconds { get; set; } = 250;
     public int GalleryRefreshIntervalSeconds { get; set; } = 30;
+    public int EvidenceSnapshotMaxWidthPixels { get; set; } = 640;
+    public int EvidenceJpegQuality { get; set; } = 85;
     public List<EdgeCameraOptions> Cameras { get; set; } = [];
     public List<RestrictedGallerySeedOptions> RestrictedGallery { get; set; } = [];
 }
@@ -189,6 +191,16 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
         if (options.GalleryRefreshIntervalSeconds <= 0)
         {
             errors.Add("EdgeWorker:GalleryRefreshIntervalSeconds must be greater than zero.");
+        }
+
+        if (options.EvidenceSnapshotMaxWidthPixels <= 0)
+        {
+            errors.Add("EdgeWorker:EvidenceSnapshotMaxWidthPixels must be greater than zero.");
+        }
+
+        if (options.EvidenceJpegQuality is < 1 or > 100)
+        {
+            errors.Add("EdgeWorker:EvidenceJpegQuality must be between 1 and 100.");
         }
 
         foreach (var camera in options.Cameras)

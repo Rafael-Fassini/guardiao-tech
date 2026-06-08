@@ -16,6 +16,7 @@ public sealed class CameraPipelineSession
     private readonly IFaceMatcherPort _matcherPort;
     private readonly ICandidateEventPublisher _publisher;
     private readonly IRestrictedGalleryProvider _galleryProvider;
+    private readonly CandidateEventEvidenceFactory _evidenceFactory;
     private readonly BoundedCameraFrameQueue _queue;
     private readonly EdgeMetricsCollector _metrics;
     private readonly IClock _clock;
@@ -31,6 +32,7 @@ public sealed class CameraPipelineSession
         IFaceMatcherPort matcherPort,
         ICandidateEventPublisher publisher,
         IRestrictedGalleryProvider galleryProvider,
+        CandidateEventEvidenceFactory evidenceFactory,
         BoundedCameraFrameQueue queue,
         EdgeMetricsCollector metrics,
         IClock clock,
@@ -43,6 +45,7 @@ public sealed class CameraPipelineSession
         _matcherPort = matcherPort;
         _publisher = publisher;
         _galleryProvider = galleryProvider;
+        _evidenceFactory = evidenceFactory;
         _queue = queue;
         _metrics = metrics;
         _clock = clock;
@@ -132,7 +135,8 @@ public sealed class CameraPipelineSession
                 score,
                 _clock.UtcNow);
 
-            await _publisher.PublishAsync(candidateEvent, cancellationToken);
+            var evidences = _evidenceFactory.Create(cameraOptions.CameraId, frame.Bytes, face.CropBytes);
+            await _publisher.PublishAsync(candidateEvent, evidences, cancellationToken);
             _metrics.IncrementCounter("candidate_events_total", ("camera", cameraOptions.CameraId.ToString()));
         }
 

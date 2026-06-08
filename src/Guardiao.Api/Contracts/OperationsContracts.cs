@@ -35,6 +35,14 @@ public sealed record IncidentDetailResponse(
     DateTime? EscalatedAtUtc,
     string? ReviewNotes);
 
+public sealed record IncidentEvidenceResponse(
+    Guid Id,
+    Guid IncidentId,
+    Guid? CandidateEventId,
+    string ArtifactType,
+    string ContentType,
+    DateTime CreatedAtUtc);
+
 public sealed record ProtectedCaseListItemResponse(
     Guid Id,
     string ExternalCaseId,

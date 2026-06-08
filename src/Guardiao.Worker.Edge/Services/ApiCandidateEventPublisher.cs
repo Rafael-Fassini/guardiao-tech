@@ -27,8 +27,12 @@ public sealed class ApiCandidateEventPublisher : ICandidateEventPublisher
         _logger = logger;
     }
 
-    public async Task PublishAsync(BiometricCandidateEvent candidateEvent, CancellationToken cancellationToken = default)
+    public async Task PublishAsync(
+        BiometricCandidateEvent candidateEvent,
+        IReadOnlyCollection<CandidateEventEvidencePayload>? evidences = null,
+        CancellationToken cancellationToken = default)
     {
+        evidences ??= [];
         var delay = TimeSpan.FromMilliseconds(_options.PublishInitialRetryDelayMilliseconds);
 
         for (var attempt = 1; attempt <= _options.PublishRetryAttempts; attempt++)
@@ -43,7 +47,12 @@ public sealed class ApiCandidateEventPublisher : ICandidateEventPublisher
                         candidateEvent.CameraScope.SiteId,
                         candidateEvent.CameraScope.CameraId,
                         candidateEvent.MatchScore.Value,
-                        candidateEvent.OccurredAtUtc))
+                        candidateEvent.OccurredAtUtc,
+                        evidences.Select(x => new CandidateEventEvidenceRequest(
+                            x.ArtifactType,
+                            x.FileName,
+                            x.ContentType,
+                            x.Content)).ToArray()))
                 };
 
                 request.Headers.TryAddWithoutValidation("X-Worker-Id", _options.WorkerId);
@@ -62,6 +71,11 @@ public sealed class ApiCandidateEventPublisher : ICandidateEventPublisher
                         _metrics.IncrementCounter("candidate_event_publish_success_total");
                     }
 
+                    if (evidences.Count > 0)
+                    {
+                        _metrics.AddCounter("evidence_bytes_uploaded_total", evidences.Sum(x => x.Content.LongLength));
+                    }
+
                     return;
                 }
 
@@ -69,6 +83,10 @@ public sealed class ApiCandidateEventPublisher : ICandidateEventPublisher
                 {
                     var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
                     _metrics.IncrementCounter("candidate_event_publish_failures_total");
+                    if (evidences.Count > 0)
+                    {
+                        _metrics.IncrementCounter("evidence_upload_failures_total");
+                    }
                     throw new HttpRequestException(
                         $"Candidate event publish failed with status code {(int)response.StatusCode}: {responseBody}",
                         null,
@@ -92,6 +110,10 @@ public sealed class ApiCandidateEventPublisher : ICandidateEventPublisher
             catch (Exception ex)
             {
                 _metrics.IncrementCounter("candidate_event_publish_failures_total");
+                if (evidences.Count > 0)
+                {
+                    _metrics.IncrementCounter("evidence_upload_failures_total");
+                }
                 _logger.LogError(ex, "Candidate event publish failed for {CandidateEventId}.", candidateEvent.Id);
                 throw;
             }
@@ -117,7 +139,14 @@ public sealed class ApiCandidateEventPublisher : ICandidateEventPublisher
         Guid SiteId,
         Guid CameraId,
         double MatchScore,
-        DateTime OccurredAtUtc);
+        DateTime OccurredAtUtc,
+        IReadOnlyCollection<CandidateEventEvidenceRequest> Evidences);
+
+    internal sealed record CandidateEventEvidenceRequest(
+        string ArtifactType,
+        string FileName,
+        string ContentType,
+        byte[] Content);
 
     internal sealed record CandidateEventIngestionResponse(
         Guid CandidateEventId,

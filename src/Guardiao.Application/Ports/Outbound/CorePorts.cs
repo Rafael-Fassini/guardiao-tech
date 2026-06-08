@@ -72,6 +72,7 @@ public interface IBiometricTemplateRepository
 public interface IEvidenceStoragePort
 {
     Task<string> StoreAsync(Stream content, string fileName, string contentType, CancellationToken cancellationToken = default);
+    Task<Stream> OpenReadAsync(string storagePath, CancellationToken cancellationToken = default);
 }
 
 public interface ICameraCapturePort
@@ -101,7 +102,10 @@ public interface IFaceMatcherPort
 
 public interface ICandidateEventPublisher
 {
-    Task PublishAsync(BiometricCandidateEvent candidateEvent, CancellationToken cancellationToken = default);
+    Task PublishAsync(
+        BiometricCandidateEvent candidateEvent,
+        IReadOnlyCollection<CandidateEventEvidencePayload>? evidences = null,
+        CancellationToken cancellationToken = default);
 }
 
 public interface INotificationPort
@@ -112,6 +116,7 @@ public interface INotificationPort
 public interface IMetricsPort
 {
     void IncrementCounter(string name, params (string Key, string Value)[] tags);
+    void AddCounter(string name, double value, params (string Key, string Value)[] tags);
     void RecordLatency(string name, TimeSpan elapsed, params (string Key, string Value)[] tags);
 }
 
@@ -159,3 +164,9 @@ public sealed record VictimRegistryMediaItem(string MediaId, string ContentType,
 public sealed record DetectedFace(Guid DetectionId, byte[] CropBytes);
 
 public sealed record TrackedFace(Guid TrackingId, byte[] CropBytes);
+
+public sealed record CandidateEventEvidencePayload(
+    string ArtifactType,
+    string FileName,
+    string ContentType,
+    byte[] Content);

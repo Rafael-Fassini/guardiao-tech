@@ -94,6 +94,42 @@ public class OperationsPanelIntegrationTests
     }
 
     [Fact]
+    public async Task GetIncidentDetail_ShouldRenderEvidenceSection_WhenAuthenticated()
+    {
+        using var factory = new GuardiaoWebFactory();
+        var incident = new IncidentState
+        {
+            Id = Guid.NewGuid(),
+            ProtectedCaseId = Guid.NewGuid(),
+            CandidateEventId = Guid.NewGuid(),
+            Status = "PendingReview",
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        factory.ApiHandler.Incidents.Add(incident);
+        factory.ApiHandler.IncidentEvidences.Add(new IncidentEvidenceState
+        {
+            Id = Guid.NewGuid(),
+            IncidentId = incident.Id,
+            CandidateEventId = incident.CandidateEventId,
+            ArtifactType = "Snapshot",
+            ContentType = "image/jpeg",
+            CreatedAtUtc = DateTime.UtcNow,
+            Content = [1, 2, 3, 4]
+        });
+
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, "operator.ana", "operator");
+
+        var response = await client.GetAsync($"/incidents/{incident.Id}");
+        var html = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("Evidencias", html);
+        Assert.Contains("Snapshot", html);
+        Assert.Contains("data:image/jpeg;base64", html);
+    }
+
+    [Fact]
     public async Task GetDashboard_ShouldRenderSummaryAndRecentItems_WhenAuthenticated()
     {
         using var factory = new GuardiaoWebFactory();
@@ -248,6 +284,7 @@ internal sealed class TestAuthenticationStateProvider : AuthenticationStateProvi
 public sealed class FakeOperationsApiHandler : HttpMessageHandler
 {
     public const string SharedSecret = "test-panel-secret";
+    private static readonly byte[] SampleEvidenceBytes = [0x47, 0x55, 0x41, 0x52, 0x44];
 
     public List<IncidentState> Incidents { get; } = [];
     public List<ProtectedCaseState> Cases { get; } = [];
@@ -256,6 +293,7 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
     public List<CameraState> Cameras { get; } = [];
     public List<AuditEntryState> AuditEntries { get; } = [];
     public List<BiometricTemplateState> BiometricTemplates { get; } = [];
+    public List<IncidentEvidenceState> IncidentEvidences { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -288,6 +326,33 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
             var id = Guid.Parse(segments[2]);
             var incident = Incidents.FirstOrDefault(x => x.Id == id);
             return incident is null ? new HttpResponseMessage(HttpStatusCode.NotFound) : Json(incident.ToDetailModel());
+        }
+
+        if (request.Method == HttpMethod.Get && segments.Length == 4 && segments[0] == "api" && segments[1] == "incidents" && segments[3] == "evidences")
+        {
+            var incidentId = Guid.Parse(segments[2]);
+            return Json(IncidentEvidences
+                .Where(x => x.IncidentId == incidentId)
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .Select(x => x.ToModel())
+                .ToArray());
+        }
+
+        if (request.Method == HttpMethod.Get && segments.Length == 6 && segments[0] == "api" && segments[1] == "incidents" && segments[3] == "evidences" && segments[5] == "content")
+        {
+            var evidenceId = Guid.Parse(segments[4]);
+            var evidence = IncidentEvidences.FirstOrDefault(x => x.Id == evidenceId);
+            if (evidence is null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            var content = new ByteArrayContent(evidence.Content.Length == 0 ? SampleEvidenceBytes : evidence.Content);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(evidence.ContentType);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = content
+            };
         }
 
         if (request.Method == HttpMethod.Post && segments.Length == 5 && segments[0] == "api" && segments[1] == "incidents" && segments[3] == "review")
@@ -518,6 +583,20 @@ public sealed class IncidentState
 
     public RecentIncidentModel ToRecentModel()
         => new(Id, ProtectedCaseId, Status, CreatedAtUtc);
+}
+
+public sealed class IncidentEvidenceState
+{
+    public Guid Id { get; set; }
+    public Guid IncidentId { get; set; }
+    public Guid? CandidateEventId { get; set; }
+    public string ArtifactType { get; set; } = string.Empty;
+    public string ContentType { get; set; } = "image/jpeg";
+    public DateTime CreatedAtUtc { get; set; }
+    public byte[] Content { get; set; } = [];
+
+    public IncidentEvidenceModel ToModel()
+        => new(Id, IncidentId, CandidateEventId, ArtifactType, ContentType, CreatedAtUtc);
 }
 
 public sealed class ProtectedCaseState

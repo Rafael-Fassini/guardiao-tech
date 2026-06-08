@@ -20,5 +20,6 @@ public class MigrationMetadataTests
 
         Assert.Contains("202605120401_InitialPersistence", migrations);
         Assert.Contains("202606080930_AddBiometricTemplateMetadata", migrations);
+        Assert.Contains("202606081130_AddEvidenceArtifactMetadata", migrations);
     }
 }

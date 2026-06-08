@@ -33,6 +33,14 @@ public sealed record IncidentDetailModel(
     DateTime? EscalatedAtUtc,
     string? ReviewNotes);
 
+public sealed record IncidentEvidenceModel(
+    Guid Id,
+    Guid IncidentId,
+    Guid? CandidateEventId,
+    string ArtifactType,
+    string ContentType,
+    DateTime CreatedAtUtc);
+
 public sealed record ProtectedCaseListItemModel(
     Guid Id,
     string ExternalCaseId,

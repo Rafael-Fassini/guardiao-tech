@@ -23,6 +23,8 @@ else
                 <dd>@incident.ProtectedCaseId</dd>
                 <dt>Criado</dt>
                 <dd>@incident.CreatedAtUtc.ToLocalTime()</dd>
+                <dt>Evidencias</dt>
+                <dd>@evidences.Count</dd>
             </dl>
         </section>
 
@@ -35,6 +37,30 @@ else
             </div>
         </section>
     </div>
+
+    <section class="panel evidence-panel">
+        <h2>Evidencias</h2>
+        @if (evidences.Count == 0)
+        {
+            <p class="panel-empty">Nenhuma evidencia vinculada a este incidente.</p>
+        }
+        else
+        {
+            <div class="evidence-grid">
+                @foreach (var evidence in evidences)
+                {
+                    <article class="evidence-card">
+                        <strong>@evidence.ArtifactType</strong>
+                        <span>@evidence.CreatedAtUtc.ToLocalTime()</span>
+                        @if (evidenceDataUrls.TryGetValue(evidence.Id, out var dataUrl))
+                        {
+                            <img src="@dataUrl" alt="@evidence.ArtifactType" />
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </section>
 }
 
 <style>
@@ -76,6 +102,38 @@ else
         margin-top: 12px;
     }
 
+    .evidence-panel {
+        margin-top: 16px;
+    }
+
+    .evidence-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+    }
+
+    .evidence-card {
+        display: grid;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 12px;
+        background: #fffefb;
+    }
+
+    .evidence-card span {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .evidence-card img {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        object-fit: cover;
+        background: #f3ede4;
+    }
+
     .primary, .danger {
         border: 0;
         border-radius: 999px;
@@ -104,11 +162,28 @@ else
     [Parameter] public Guid Id { get; set; }
 
     private IncidentDetailModel? incident;
+    private List<IncidentEvidenceModel> evidences = [];
+    private readonly Dictionary<Guid, string> evidenceDataUrls = [];
     private string reviewNotes = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
         incident = await PanelService.GetIncidentAsync(Id);
+        evidences = incident is null
+            ? []
+            : await PanelService.ListIncidentEvidencesAsync(Id);
+        evidenceDataUrls.Clear();
+        foreach (var evidence in evidences)
+        {
+            try
+            {
+                evidenceDataUrls[evidence.Id] = await PanelService.GetIncidentEvidenceDataUrlAsync(Id, evidence.Id, evidence.ContentType);
+            }
+            catch
+            {
+                // Keep the incident detail page usable even if one artifact cannot be loaded.
+            }
+        }
     }
 
     private async Task Confirm()

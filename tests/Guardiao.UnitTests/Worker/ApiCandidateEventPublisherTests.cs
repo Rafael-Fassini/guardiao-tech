@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
+using Guardiao.Application.Ports.Outbound;
 using Guardiao.Domain.Entities;
 using Guardiao.Domain.ValueObjects;
 using Guardiao.Worker.Edge.Options;
@@ -58,6 +60,35 @@ public class ApiCandidateEventPublisherTests
         Assert.Contains(metrics.SnapshotCounters().Keys, key => key.StartsWith("candidate_event_publish_failures_total", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task PublishAsync_ShouldSerializeEvidencePayload_WhenProvided()
+    {
+        var handler = new CapturingHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new
+            {
+                candidateEventId = Guid.NewGuid(),
+                wasDuplicate = false,
+                createsIncident = true,
+                decisionReasonCode = "RULE_MATCH",
+                incidentId = Guid.NewGuid()
+            })
+        });
+
+        var metrics = new EdgeMetricsCollector();
+        var publisher = CreatePublisher(handler, metrics);
+
+        await publisher.PublishAsync(
+            CreateCandidateEvent(),
+            [
+                new CandidateEventEvidencePayload("Snapshot", "snapshot.jpg", "image/jpeg", [1, 2, 3, 4])
+            ]);
+
+        Assert.NotNull(handler.Payload);
+        Assert.Equal(1, handler.Payload!.RootElement.GetProperty("evidences").GetArrayLength());
+        Assert.Contains(metrics.SnapshotCounters().Keys, key => key.StartsWith("evidence_bytes_uploaded_total", StringComparison.Ordinal));
+    }
+
     private static ApiCandidateEventPublisher CreatePublisher(HttpMessageHandler handler, EdgeMetricsCollector metrics)
     {
         var options = Options.Create(new EdgeWorkerOptions
@@ -102,6 +133,24 @@ public class ApiCandidateEventPublisherTests
         {
             RequestCount++;
             return Task.FromResult(_responses.Dequeue());
+        }
+    }
+
+    private sealed class CapturingHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly HttpResponseMessage _response;
+
+        public CapturingHttpMessageHandler(HttpResponseMessage response)
+        {
+            _response = response;
+        }
+
+        public JsonDocument? Payload { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+            return _response;
         }
     }
 }

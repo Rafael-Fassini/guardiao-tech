@@ -60,7 +60,24 @@ public class CandidateEventsControllerIntegrationTests : IClassFixture<GuardiaoA
             siteId,
             cameraId,
             matchScore = 0.91,
-            occurredAtUtc = DateTime.UtcNow
+            occurredAtUtc = DateTime.UtcNow,
+            evidences = new[]
+            {
+                new
+                {
+                    artifactType = "Snapshot",
+                    fileName = "snapshot.jpg",
+                    contentType = "image/jpeg",
+                    content = new byte[] { 1, 2, 3, 4 }
+                },
+                new
+                {
+                    artifactType = "FaceCrop",
+                    fileName = "face-crop.jpg",
+                    contentType = "image/jpeg",
+                    content = new byte[] { 5, 6, 7, 8 }
+                }
+            }
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -74,6 +91,7 @@ public class CandidateEventsControllerIntegrationTests : IClassFixture<GuardiaoA
         Assert.True(await verifyDb.BiometricCandidateEvents.AnyAsync(x => x.Id == eventId));
         Assert.True(await verifyDb.Incidents.AnyAsync(x => x.CandidateEventId == eventId));
         Assert.True(await verifyDb.CorrelationDecisions.AnyAsync(x => x.CandidateEventId == eventId));
+        Assert.Equal(2, await verifyDb.EvidenceArtifacts.CountAsync(x => x.CandidateEventId == eventId));
     }
 
     [Fact]

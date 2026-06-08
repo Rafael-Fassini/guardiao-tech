@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Guardiao.IntegrationTests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2adbcc54433766ff02626fc8a2b758fb6b10240b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f3e4436ce6a9d392230f93a67561e734e5eb77c7")]
 [assembly: System.Reflection.AssemblyProductAttribute("Guardiao.IntegrationTests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Guardiao.IntegrationTests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

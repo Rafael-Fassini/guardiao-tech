@@ -5,6 +5,7 @@ using Guardiao.Worker.Edge.Adapters;
 using Guardiao.Worker.Edge.Options;
 using Guardiao.Worker.Edge.Pipeline;
 using Guardiao.Worker.Edge.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -43,6 +44,10 @@ public class StreamRestartResilienceTests
             new RestrictedGalleryMatcherPort(galleryProvider, metrics, Options.Create(new EdgeWorkerOptions { MatchThreshold = 0.1 })),
             publisher,
             galleryProvider,
+            new CandidateEventEvidenceFactory(
+                Options.Create(new EdgeWorkerOptions()),
+                metrics,
+                NullLogger<CandidateEventEvidenceFactory>.Instance),
             new BoundedCameraFrameQueue(),
             metrics,
             new SystemClock(),

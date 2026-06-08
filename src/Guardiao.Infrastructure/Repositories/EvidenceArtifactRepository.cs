@@ -7,6 +7,7 @@ namespace Guardiao.Infrastructure.Repositories;
 public interface IEvidenceArtifactRepository
 {
     Task AddAsync(EvidenceArtifact artifact, CancellationToken cancellationToken = default);
+    Task<EvidenceArtifact?> GetByIdAsync(Guid artifactId, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<EvidenceArtifact>> ListByIncidentAsync(Guid incidentId, CancellationToken cancellationToken = default);
 }
 
@@ -23,6 +24,11 @@ public sealed class EvidenceArtifactRepository : IEvidenceArtifactRepository
     {
         _context.EvidenceArtifacts.Add(artifact);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task<EvidenceArtifact?> GetByIdAsync(Guid artifactId, CancellationToken cancellationToken = default)
+    {
+        return _context.EvidenceArtifacts.FirstOrDefaultAsync(x => x.Id == artifactId, cancellationToken);
     }
 
     public async Task<IReadOnlyCollection<EvidenceArtifact>> ListByIncidentAsync(Guid incidentId, CancellationToken cancellationToken = default)
