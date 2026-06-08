@@ -167,6 +167,10 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
         {
             errors.Add("EdgeWorker:ApiSharedSecret is required.");
         }
+        else if (options.ApiSharedSecret.Trim().Length < 12)
+        {
+            errors.Add("EdgeWorker:ApiSharedSecret must be at least 12 characters.");
+        }
 
         if (string.IsNullOrWhiteSpace(options.WorkerId))
         {
@@ -201,6 +205,11 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
         if (options.EvidenceJpegQuality is < 1 or > 100)
         {
             errors.Add("EdgeWorker:EvidenceJpegQuality must be between 1 and 100.");
+        }
+
+        if (!options.Cameras.Any(x => x.Enabled))
+        {
+            errors.Add("EdgeWorker:Cameras must declare at least one enabled camera for the pilot.");
         }
 
         foreach (var camera in options.Cameras)

@@ -94,7 +94,7 @@ services:
     ports:
       - "8081:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/login"]
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/ready"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -126,7 +126,7 @@ services:
     volumes:
       - ./models:/app/models:ro
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:${EDGE_HEALTH_PORT}/health"]
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:${EDGE_HEALTH_PORT}/ready"]
       interval: 15s
       timeout: 5s
       retries: 10

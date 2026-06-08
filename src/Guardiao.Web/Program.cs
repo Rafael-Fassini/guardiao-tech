@@ -89,6 +89,31 @@ app.MapPost("/operations/logout", async (HttpContext context) =>
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
 }).AllowAnonymous();
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
+app.MapGet("/ready", async (IOptions<OperationsPanelOptions> options, CancellationToken cancellationToken) =>
+{
+    using var client = new HttpClient
+    {
+        BaseAddress = new Uri(options.Value.BaseUrl),
+        Timeout = TimeSpan.FromSeconds(5)
+    };
+    using var request = new HttpRequestMessage(HttpMethod.Get, "/api/operations/summary");
+    request.Headers.TryAddWithoutValidation("X-Panel-User", "readiness-probe");
+    request.Headers.TryAddWithoutValidation("X-Panel-Role", "admin");
+    request.Headers.TryAddWithoutValidation("X-Panel-Auth", options.Value.SharedSecret);
+
+    try
+    {
+        using var response = await client.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode
+            ? Results.Ok(new { status = "Ready" })
+            : Results.Json(new { status = "NotReady", operationsApiStatusCode = (int)response.StatusCode }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "NotReady", error = ex.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+}).AllowAnonymous();
 
 app.Run();
 

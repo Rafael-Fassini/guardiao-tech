@@ -23,6 +23,7 @@ public class DeploymentConfigValidationTests
 
         Assert.Contains("API_ENABLE_DEBUG_HEADER_AUTHENTICATION=false", envFile, StringComparison.Ordinal);
         Assert.Contains("WEB_ENABLE_OPERATIONS_DEMO_LOGIN=false", envFile, StringComparison.Ordinal);
+        Assert.Contains("API_MAX_REQUEST_BODY_BYTES=1048576", envFile, StringComparison.Ordinal);
         Assert.Contains("VICTIM_REGISTRY_WEBHOOK_SECRET=", envFile, StringComparison.Ordinal);
     }
 
@@ -37,6 +38,7 @@ public class DeploymentConfigValidationTests
         Assert.Contains("api:", compose, StringComparison.Ordinal);
         Assert.Contains("web:", compose, StringComparison.Ordinal);
         Assert.Contains("worker:", compose, StringComparison.Ordinal);
+        Assert.Contains("/ready", compose, StringComparison.Ordinal);
     }
 
     [Fact]

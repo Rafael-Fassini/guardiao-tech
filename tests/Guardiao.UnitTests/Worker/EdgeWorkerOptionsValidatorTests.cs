@@ -77,4 +77,36 @@ public class EdgeWorkerOptionsValidatorTests
             File.Delete(embeddingPath);
         }
     }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenNoEnabledCameraIsConfigured()
+    {
+        var detectionPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.xml");
+        var embeddingPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.onnx");
+        File.WriteAllText(detectionPath, "<cascade/>");
+        File.WriteAllBytes(embeddingPath, [0x01, 0x02, 0x03]);
+
+        try
+        {
+            var validator = new EdgeWorkerOptionsValidator();
+            var options = new EdgeWorkerOptions
+            {
+                ApiSharedSecret = "worker-secret-123",
+                WorkerId = "edge-worker-01",
+                DetectionModelPath = detectionPath,
+                EmbeddingModelPath = embeddingPath,
+                Cameras = []
+            };
+
+            var result = validator.Validate(null, options);
+
+            Assert.True(result.Failed);
+            Assert.Contains(result.Failures, failure => failure.Contains("at least one enabled camera", StringComparison.Ordinal));
+        }
+        finally
+        {
+            File.Delete(detectionPath);
+            File.Delete(embeddingPath);
+        }
+    }
 }

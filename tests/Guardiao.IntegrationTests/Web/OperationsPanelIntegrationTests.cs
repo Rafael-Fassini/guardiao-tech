@@ -184,6 +184,19 @@ public class OperationsPanelIntegrationTests
     }
 
     [Fact]
+    public async Task GetReady_ShouldReturnReady_WhenOperationsApiHeadersWork()
+    {
+        using var factory = new GuardiaoWebFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/ready");
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("Ready", body);
+    }
+
+    [Fact]
     public async Task GetAudit_ShouldRenderTrailEntries_ForOperator()
     {
         using var factory = new GuardiaoWebFactory();

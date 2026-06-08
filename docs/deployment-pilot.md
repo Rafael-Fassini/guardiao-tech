@@ -12,9 +12,15 @@
 3. Apply database migration if needed
 4. Start `api`
 5. Wait for `GET /ready`
-6. Start `web`
-7. Start `worker`
-8. Run `scripts/post-deploy-smoke.sh`
+6. Confirm API readiness details:
+   - database reachable
+   - pending migrations applied
+   - object storage writable
+7. Start `web`
+8. Wait for `GET /ready` on `web`
+9. Start `worker`
+10. Wait for `GET /ready` on `worker`
+11. Run `scripts/post-deploy-smoke.sh`
 
 ## Container Images
 - `src/Guardiao.Api/Dockerfile`
@@ -27,3 +33,15 @@
 - Worker health: `${EDGE_HEALTH_PORT}`
 - PostgreSQL: `${DB_PORT}`
 - Redis: `6379`
+
+## Readiness Meaning
+- API `/ready`
+  - PostgreSQL reachable
+  - no pending migrations
+  - local object storage path writable
+- Web `/ready`
+  - panel can authenticate against the API using the configured shared secret
+- Worker `/ready`
+  - at least one enabled camera configured
+  - recent gallery refresh success
+  - recent successful camera loop activity

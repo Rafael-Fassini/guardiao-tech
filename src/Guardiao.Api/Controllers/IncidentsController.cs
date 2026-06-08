@@ -1,5 +1,6 @@
 using Guardiao.Api.Contracts;
 using Guardiao.Api.Infrastructure;
+using Guardiao.Application.Ports.Outbound;
 using Guardiao.Domain.Entities;
 using Guardiao.Domain.Enums;
 using Guardiao.Infrastructure.Persistence;
@@ -16,10 +17,12 @@ namespace Guardiao.Api.Controllers;
 public class IncidentsController : ControllerBase
 {
     private readonly GuardiaoDbContext _dbContext;
+    private readonly IMetricsPort _metrics;
 
-    public IncidentsController(GuardiaoDbContext dbContext)
+    public IncidentsController(GuardiaoDbContext dbContext, IMetricsPort metrics)
     {
         _dbContext = dbContext;
+        _metrics = metrics;
     }
 
     [HttpGet]
@@ -79,6 +82,7 @@ public class IncidentsController : ControllerBase
             incident.Id.ToString(),
             $"status={IncidentStatus.Confirmed};evidence_count={evidenceCount}"));
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _metrics.IncrementCounter("incident_reviews_confirmed_total");
 
         return Ok(new IncidentDetailResponse(
             incident.Id,
@@ -111,6 +115,7 @@ public class IncidentsController : ControllerBase
             incident.Id.ToString(),
             $"status={IncidentStatus.Dismissed};evidence_count={evidenceCount}"));
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _metrics.IncrementCounter("incident_reviews_dismissed_total");
 
         return Ok(new IncidentDetailResponse(
             incident.Id,

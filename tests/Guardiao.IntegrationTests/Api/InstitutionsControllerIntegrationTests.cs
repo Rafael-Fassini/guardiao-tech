@@ -220,6 +220,7 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 ["VictimRegistry:ReconciliationPageSize"] = "100",
                 ["VictimRegistry:InitialLookbackMinutes"] = "5",
                 ["ApiSecurity:EnableDebugHeaderAuthentication"] = "true",
+                ["ApiSecurity:PanelSharedSecret"] = "panel-test-secret",
                 ["ApiSecurity:WorkerSharedSecret"] = "worker-test-secret",
                 ["ApiSecurity:EnableSwaggerUi"] = "false",
                 ["BiometricProcessing:DetectionModelPath"] = DetectionModelPath,

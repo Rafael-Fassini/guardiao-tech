@@ -26,6 +26,10 @@ public sealed class OperationsPanelOptionsValidator : IValidateOptions<Operation
         {
             errors.Add("PanelApi:SharedSecret must be configured.");
         }
+        else if (options.SharedSecret.Trim().Length < 12)
+        {
+            errors.Add("PanelApi:SharedSecret must be at least 12 characters.");
+        }
 
         return errors.Count > 0
             ? ValidateOptionsResult.Fail(errors)

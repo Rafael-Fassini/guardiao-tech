@@ -49,6 +49,21 @@ public class ApiRestrictedGalleryProviderTests
                 ]
             }),
             new EdgeMetricsCollector(),
+            new WorkerOperationalState(Options.Create(new EdgeWorkerOptions
+            {
+                Cameras =
+                [
+                    new EdgeCameraOptions
+                    {
+                        CameraId = Guid.NewGuid(),
+                        SiteId = siteId,
+                        ProtectedCaseId = protectedCaseId,
+                        Name = "Cam",
+                        Source = "webcam://0",
+                        Enabled = true
+                    }
+                ]
+            })),
             NullLogger<ApiRestrictedGalleryProvider>.Instance);
 
         await provider.RefreshAsync();

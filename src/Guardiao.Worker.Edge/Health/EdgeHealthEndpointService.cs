@@ -11,13 +11,20 @@ namespace Guardiao.Worker.Edge.Health;
 public sealed class EdgeHealthEndpointService : BackgroundService
 {
     private readonly EdgeMetricsCollector _metrics;
+    private readonly EdgeWorkerOptions _options;
+    private readonly WorkerOperationalState _state;
     private readonly int _port;
     private readonly TcpListener _listener;
 
-    public EdgeHealthEndpointService(IOptions<EdgeWorkerOptions> options, EdgeMetricsCollector metrics)
+    public EdgeHealthEndpointService(
+        IOptions<EdgeWorkerOptions> options,
+        EdgeMetricsCollector metrics,
+        WorkerOperationalState state)
     {
         _metrics = metrics;
-        _port = options.Value.HealthPort;
+        _options = options.Value;
+        _state = state;
+        _port = _options.HealthPort;
         _listener = new TcpListener(IPAddress.Any, _port);
     }
 
@@ -77,6 +84,27 @@ public sealed class EdgeHealthEndpointService : BackgroundService
             return;
         }
 
+        if (path.Equals("/ready", StringComparison.OrdinalIgnoreCase))
+        {
+            var snapshot = _state.Snapshot(DateTime.UtcNow, _options.GalleryRefreshIntervalSeconds);
+            await WriteResponseAsync(
+                stream,
+                snapshot.IsReady ? 200 : 503,
+                new
+                {
+                    status = snapshot.IsReady ? "Ready" : "NotReady",
+                    enabledCameraCount = snapshot.EnabledCameraCount,
+                    expectedScopeCount = snapshot.ExpectedScopeCount,
+                    cachedScopeCount = snapshot.CachedScopeCount,
+                    lastGalleryRefreshSuccessUtc = snapshot.LastGalleryRefreshSuccessUtc,
+                    lastGalleryRefreshFailureUtc = snapshot.LastGalleryRefreshFailureUtc,
+                    staleCameraIds = snapshot.StaleCameraIds,
+                    cameraFailureCounts = snapshot.CameraFailureCounts
+                },
+                cancellationToken);
+            return;
+        }
+
         await WriteResponseAsync(stream, 404, new { error = "Not Found" }, cancellationToken);
     }
 
@@ -102,6 +130,7 @@ public sealed class EdgeHealthEndpointService : BackgroundService
     private static string ReasonPhrase(int statusCode) => statusCode switch
     {
         200 => "OK",
+        503 => "Service Unavailable",
         400 => "Bad Request",
         404 => "Not Found",
         _ => "OK"

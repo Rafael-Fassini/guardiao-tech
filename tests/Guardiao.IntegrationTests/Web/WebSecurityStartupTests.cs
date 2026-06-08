@@ -28,6 +28,8 @@ internal sealed class InvalidWebSecurityFactory : WebApplicationFactory<WebEntry
         {
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["PanelApi:BaseUrl"] = "https://operations-api.test",
+                ["PanelApi:SharedSecret"] = "production-panel-secret",
                 ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=guardiao_tests;Username=guardiao;Password=guardiao",
                 ["WebSecurity:EnableOperationsDemoLogin"] = "true"
             });

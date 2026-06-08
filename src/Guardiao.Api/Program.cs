@@ -127,6 +127,11 @@ builder.Services
     .Bind(builder.Configuration.GetSection(ApiSecurityOptions.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<ApiSecurityOptions>, ApiSecurityOptionsValidator>();
+builder.Services
+    .AddOptions<HousekeepingOptions>()
+    .Bind(builder.Configuration.GetSection(HousekeepingOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<HousekeepingOptions>, HousekeepingOptionsValidator>();
 
 builder.Services.AddHttpClient<IVictimRegistryAccessTokenProvider, VictimRegistryClientCredentialsTokenProvider>()
     .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
@@ -166,6 +171,7 @@ builder.Services.AddScoped<IWebhookSignatureVerifier, HmacSha256WebhookSignature
 builder.Services.AddSingleton<IBiometricTemplateExtractor, OpenCvOnnxBiometricTemplateExtractor>();
 builder.Services.AddSingleton<SensitiveDataRedactor>();
 builder.Services.AddSingleton<ApiMetricsCollector>();
+builder.Services.AddSingleton<ApiReadinessService>();
 builder.Services.AddSingleton<IMetricsPort>(sp => sp.GetRequiredService<ApiMetricsCollector>());
 builder.Services.AddScoped(sp => new CorrelationEngineOptions
 {
@@ -186,6 +192,7 @@ builder.Services.AddScoped(sp =>
 });
 builder.Services.AddHostedService<VictimRegistryWebhookWorker>();
 builder.Services.AddHostedService<VictimRegistryReconciliationBackgroundService>();
+builder.Services.AddHostedService<EvidenceEligibilityScanBackgroundService>();
 
 var app = builder.Build();
 
@@ -217,12 +224,26 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
-app.MapGet("/ready", async (GuardiaoDbContext dbContext, CancellationToken cancellationToken) =>
+app.MapGet("/ready", async (ApiReadinessService readiness, CancellationToken cancellationToken) =>
 {
-    var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
-    return canConnect
-        ? Results.Ok(new { status = "Ready" })
-        : Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Dependency unavailable.");
+    var status = await readiness.CheckAsync(cancellationToken);
+    return status.IsReady
+        ? Results.Ok(new
+        {
+            status = "Ready",
+            databaseReachable = status.DatabaseReachable,
+            migrationsApplied = status.MigrationsApplied,
+            objectStorageWritable = status.ObjectStorageWritable
+        })
+        : Results.Json(new
+        {
+            status = "NotReady",
+            databaseReachable = status.DatabaseReachable,
+            migrationsApplied = status.MigrationsApplied,
+            objectStorageWritable = status.ObjectStorageWritable,
+            databaseError = status.DatabaseError,
+            objectStorageError = status.ObjectStorageError
+        }, statusCode: StatusCodes.Status503ServiceUnavailable);
 }).AllowAnonymous();
 app.MapGet("/metrics", (ApiMetricsCollector metrics) => Results.Ok(new
 {

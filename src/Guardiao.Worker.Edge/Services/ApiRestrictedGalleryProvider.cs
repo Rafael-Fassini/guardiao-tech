@@ -11,6 +11,7 @@ public sealed class ApiRestrictedGalleryProvider : IRestrictedGalleryProvider
     private readonly HttpClient _httpClient;
     private readonly EdgeWorkerOptions _options;
     private readonly EdgeMetricsCollector _metrics;
+    private readonly WorkerOperationalState _state;
     private readonly ILogger<ApiRestrictedGalleryProvider> _logger;
     private readonly ConcurrentDictionary<(Guid ProtectedCaseId, Guid SiteId), IReadOnlyCollection<GalleryCandidate>> _cache = new();
 
@@ -18,11 +19,13 @@ public sealed class ApiRestrictedGalleryProvider : IRestrictedGalleryProvider
         HttpClient httpClient,
         IOptions<EdgeWorkerOptions> options,
         EdgeMetricsCollector metrics,
+        WorkerOperationalState state,
         ILogger<ApiRestrictedGalleryProvider> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;
         _metrics = metrics;
+        _state = state;
         _logger = logger;
     }
 
@@ -48,6 +51,7 @@ public sealed class ApiRestrictedGalleryProvider : IRestrictedGalleryProvider
             .Select(x => (x.ProtectedCaseId, x.SiteId))
             .Distinct()
             .ToArray();
+        var successfulScopes = 0;
 
         foreach (var scope in scopes)
         {
@@ -76,12 +80,19 @@ public sealed class ApiRestrictedGalleryProvider : IRestrictedGalleryProvider
                 _cache[(scope.ProtectedCaseId, scope.SiteId)] = candidates;
                 _metrics.IncrementCounter("gallery_refresh_success_total", ("case", scope.ProtectedCaseId.ToString()), ("site", scope.SiteId.ToString()));
                 _metrics.RecordGauge("gallery_entries_cached", candidates.Length, ("case", scope.ProtectedCaseId.ToString()), ("site", scope.SiteId.ToString()));
+                successfulScopes++;
             }
             catch (Exception ex)
             {
                 _metrics.IncrementCounter("gallery_refresh_failures_total", ("case", scope.ProtectedCaseId.ToString()), ("site", scope.SiteId.ToString()));
                 _logger.LogWarning(ex, "Gallery refresh failed for case {ProtectedCaseId} and site {SiteId}.", scope.ProtectedCaseId, scope.SiteId);
+                _state.RecordGalleryRefreshFailure(DateTime.UtcNow);
             }
+        }
+
+        if (successfulScopes > 0)
+        {
+            _state.RecordGalleryRefresh(successfulScopes, DateTime.UtcNow);
         }
     }
 

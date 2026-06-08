@@ -7,6 +7,9 @@
 - Victim registry secrets rotated and validated
 - PostgreSQL backup taken before deploy
 - `docker compose config` passes
-- `/ready`, `/health`, `/login` smoke checks pass
+- API `/ready` confirms database, migrations and object storage
+- Web `/ready` passes
+- Worker `/ready` passes
+- `/health`, `/login` and smoke checks pass
 - Worker `/metrics` exposes expected counters and gauges
 - Pilot operators have runbook links available

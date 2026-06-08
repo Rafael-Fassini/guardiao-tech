@@ -118,6 +118,7 @@ public interface IMetricsPort
     void IncrementCounter(string name, params (string Key, string Value)[] tags);
     void AddCounter(string name, double value, params (string Key, string Value)[] tags);
     void RecordLatency(string name, TimeSpan elapsed, params (string Key, string Value)[] tags);
+    void RecordGauge(string name, double value, params (string Key, string Value)[] tags);
 }
 
 public interface IClock

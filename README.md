@@ -25,6 +25,11 @@ dotnet run --project src/Guardiao.Worker.Edge
 - Place edge model files under `models/` as described in `models/README.md`
 - Start infrastructure and apps with `docker compose up -d`
 - Run `bash scripts/post-deploy-smoke.sh`
+- Treat `/health` as process liveness only.
+- Treat `/ready` as dependency readiness:
+  - API checks database reachability, pending migrations and local object storage writability.
+  - Web checks authenticated reachability to the operations API.
+  - Worker checks recent gallery refresh success and recent camera loop success.
 
 ## Biometric Enrollment Flow
 - Open the operations panel and navigate to a case detail page.
@@ -42,6 +47,7 @@ dotnet run --project src/Guardiao.Worker.Edge
 - The API stores the files in object storage and persists `EvidenceArtifact` metadata linked to the created incident.
 - The operations panel loads incident evidence from the API only and renders snapshots/crops on the incident detail page.
 - Retention currently follows `RetentionMode.CaseBound` for incident evidence created in the pilot.
+- The API also runs a periodic eligibility scan that reports artifacts past their configured retention window. This scan reports candidates; it does not delete evidence automatically in this phase.
 
 ## Edge Inference Models
 - Detection model path:
@@ -62,6 +68,29 @@ dotnet run --project src/Guardiao.Worker.Edge
   - evidence is stored only for candidate events that reach the publish path and become associated with an incident
   - evidence rendering in the web panel is optimized for small pilot snapshots/crops, not bulk media review
 
+## Operational Validation
+- `bash scripts/post-deploy-smoke.sh`
+  - validates API `/health` and `/ready`
+  - validates Web `/health` and `/ready`
+  - validates Worker `/health`, `/ready` and `/metrics`
+  - validates panel technical authentication against the API
+  - validates worker candidate-event ingestion against the API
+  - validates incident/evidence route reachability
+- `bash scripts/validate-deployment-config.sh`
+  - checks required deployment artifacts and pilot-safe flags
+- `bash scripts/run-verification.sh`
+  - runs build plus unit and integration test suites
+
+## Failure Recovery
+- If API `/ready` fails:
+  - inspect PostgreSQL connectivity, pending migrations and object storage path permissions
+- If Web `/ready` fails:
+  - inspect `PanelApi` base URL, shared secret and API availability
+- If Worker `/ready` fails:
+  - inspect gallery refresh counters, camera loop failures and model file presence
+- If evidence persistence fails:
+  - inspect `${OBJECT_STORAGE_ROOT_PATH}`, disk space and API logs for `evidence_artifact.created` or upload failure entries
+
 ## Operations Artifacts
 - Deployment topology: `docs/deployment-pilot.md`
 - Dashboards: `docs/dashboard-definitions.md`
@@ -76,6 +105,6 @@ dotnet run --project src/Guardiao.Worker.Edge
 - Deployment config validation: `bash scripts/validate-deployment-config.sh`
 
 ## Health Endpoints
-- API: `/health`, `/ready`
-- Web: `/login`
-- Worker: `/health`, `/metrics`
+- API: `/health`, `/ready`, `/metrics`
+- Web: `/health`, `/ready`, `/login`
+- Worker: `/health`, `/ready`, `/metrics`

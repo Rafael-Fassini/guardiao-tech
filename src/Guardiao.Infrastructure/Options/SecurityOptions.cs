@@ -11,7 +11,7 @@ public sealed class ApiSecurityOptions
     public string PanelSharedSecret { get; set; } = string.Empty;
     public string WorkerSharedSecret { get; set; } = string.Empty;
     public bool EnableSwaggerUi { get; set; }
-    public long MaxApiRequestBodyBytes { get; set; } = 64 * 1024;
+    public long MaxApiRequestBodyBytes { get; set; } = 1024 * 1024;
     public long MaxWebhookRequestBodyBytes { get; set; } = 16 * 1024;
     public int ApiWriteRateLimitPermitLimit { get; set; } = 60;
     public int ApiWriteRateLimitWindowSeconds { get; set; } = 60;
@@ -36,10 +36,32 @@ public sealed class ApiSecurityOptionsValidator : IValidateOptions<ApiSecurityOp
         {
             errors.Add("ApiSecurity:MaxApiRequestBodyBytes must be greater than zero.");
         }
+        else if (options.MaxApiRequestBodyBytes < 256 * 1024)
+        {
+            errors.Add("ApiSecurity:MaxApiRequestBodyBytes must be at least 262144 bytes for pilot incident evidence payloads.");
+        }
 
         if (options.MaxWebhookRequestBodyBytes <= 0)
         {
             errors.Add("ApiSecurity:MaxWebhookRequestBodyBytes must be greater than zero.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.PanelSharedSecret))
+        {
+            errors.Add("ApiSecurity:PanelSharedSecret must be configured.");
+        }
+        else if (!_environment.IsDevelopment() && options.PanelSharedSecret.Trim().Length < 12)
+        {
+            errors.Add("ApiSecurity:PanelSharedSecret must be at least 12 characters outside Development.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.WorkerSharedSecret))
+        {
+            errors.Add("ApiSecurity:WorkerSharedSecret must be configured.");
+        }
+        else if (!_environment.IsDevelopment() && options.WorkerSharedSecret.Trim().Length < 12)
+        {
+            errors.Add("ApiSecurity:WorkerSharedSecret must be at least 12 characters outside Development.");
         }
 
         if (options.ApiWriteRateLimitPermitLimit <= 0)

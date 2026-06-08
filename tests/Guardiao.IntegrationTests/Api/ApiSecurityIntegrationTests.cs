@@ -104,6 +104,9 @@ internal sealed class InvalidApiSecurityFactory : WebApplicationFactory<ApiEntry
                 ["VictimRegistry:ReconciliationIntervalSeconds"] = "3600",
                 ["VictimRegistry:ReconciliationPageSize"] = "100",
                 ["VictimRegistry:InitialLookbackMinutes"] = "5",
+                ["ApiSecurity:PanelSharedSecret"] = "production-panel-secret",
+                ["ApiSecurity:WorkerSharedSecret"] = "production-worker-secret",
+                ["ApiSecurity:MaxApiRequestBodyBytes"] = "1048576",
                 ["ApiSecurity:EnableDebugHeaderAuthentication"] = "true"
             });
         });

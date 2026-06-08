@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Guardiao.Web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f3e4436ce6a9d392230f93a67561e734e5eb77c7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3964d917198bd5668b7330ba2799860356f7f6fc")]
 [assembly: System.Reflection.AssemblyProductAttribute("Guardiao.Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Guardiao.Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
