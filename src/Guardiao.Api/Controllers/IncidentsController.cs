@@ -62,6 +62,34 @@ public class IncidentsController : ControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
+    [HttpGet("{id:guid}/notifications")]
+    public async Task<IActionResult> GetNotifications(Guid id, CancellationToken cancellationToken)
+    {
+        var incidentExists = await _dbContext.Set<Incident>().AnyAsync(x => x.Id == id, cancellationToken);
+        if (!incidentExists)
+        {
+            return NotFound();
+        }
+
+        var items = await _dbContext.IncidentNotificationRecords
+            .Where(x => x.IncidentId == id)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Select(x => new IncidentNotificationResponse(
+                x.Id,
+                x.IncidentId,
+                x.EventType,
+                x.Channel,
+                x.DeliveryStatus,
+                x.AttemptCount,
+                x.HasEvidence,
+                x.Details,
+                x.CreatedAtUtc,
+                x.CompletedAtUtc))
+            .ToListAsync(cancellationToken);
+
+        return Ok(items);
+    }
+
     [HttpPost("{id:guid}/review/confirm")]
     [Authorize(Policy = AuthorizationPolicies.IncidentsReview)]
     [EnableRateLimiting(SecurityRateLimitPolicies.ApiWrites)]
@@ -81,6 +109,15 @@ public class IncidentsController : ControllerBase
             nameof(Incident),
             incident.Id.ToString(),
             $"status={IncidentStatus.Confirmed};evidence_count={evidenceCount}"));
+        if (incident.EscalatedAtUtc is not null)
+        {
+            _dbContext.AuditLogs.Add(new AuditLog(
+                AuditActorType.Operator,
+                "incident.review.after_escalation",
+                nameof(Incident),
+                incident.Id.ToString(),
+                $"final_status={IncidentStatus.Confirmed};escalated_at_utc={incident.EscalatedAtUtc:O}"));
+        }
         await _dbContext.SaveChangesAsync(cancellationToken);
         _metrics.IncrementCounter("incident_reviews_confirmed_total");
 
@@ -114,6 +151,15 @@ public class IncidentsController : ControllerBase
             nameof(Incident),
             incident.Id.ToString(),
             $"status={IncidentStatus.Dismissed};evidence_count={evidenceCount}"));
+        if (incident.EscalatedAtUtc is not null)
+        {
+            _dbContext.AuditLogs.Add(new AuditLog(
+                AuditActorType.Operator,
+                "incident.review.after_escalation",
+                nameof(Incident),
+                incident.Id.ToString(),
+                $"final_status={IncidentStatus.Dismissed};escalated_at_utc={incident.EscalatedAtUtc:O}"));
+        }
         await _dbContext.SaveChangesAsync(cancellationToken);
         _metrics.IncrementCounter("incident_reviews_dismissed_total");
 

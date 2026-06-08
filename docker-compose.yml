@@ -58,6 +58,23 @@ services:
       ApiSecurity__PanelSharedSecret: ${PANEL_API_SHARED_SECRET}
       ApiSecurity__WorkerSharedSecret: ${WORKER_API_SHARED_SECRET}
       ApiSecurity__EnableSwaggerUi: ${API_ENABLE_SWAGGER_UI}
+      OperationalNotifications__EnableWebhook: ${NOTIFY_ENABLE_WEBHOOK}
+      OperationalNotifications__WebhookUrl: ${NOTIFY_WEBHOOK_URL}
+      OperationalNotifications__WebhookSecret: ${NOTIFY_WEBHOOK_SECRET}
+      OperationalNotifications__EnableSmtp: ${NOTIFY_ENABLE_SMTP}
+      OperationalNotifications__SmtpHost: ${NOTIFY_SMTP_HOST}
+      OperationalNotifications__SmtpPort: ${NOTIFY_SMTP_PORT}
+      OperationalNotifications__SmtpUseSsl: ${NOTIFY_SMTP_USE_SSL}
+      OperationalNotifications__SmtpUsername: ${NOTIFY_SMTP_USERNAME}
+      OperationalNotifications__SmtpPassword: ${NOTIFY_SMTP_PASSWORD}
+      OperationalNotifications__SmtpSender: ${NOTIFY_SMTP_SENDER}
+      OperationalNotifications__SmtpRecipients__0: ${NOTIFY_SMTP_RECIPIENT}
+      OperationalNotifications__DeliveryTimeoutSeconds: ${NOTIFY_TIMEOUT_SECONDS}
+      OperationalNotifications__RetryAttempts: ${NOTIFY_RETRY_ATTEMPTS}
+      OperationalNotifications__InitialRetryDelayMilliseconds: ${NOTIFY_INITIAL_RETRY_DELAY_MS}
+      OperationalNotifications__EnableEscalation: ${NOTIFY_ENABLE_ESCALATION}
+      OperationalNotifications__EscalationWindowMinutes: ${NOTIFY_ESCALATION_WINDOW_MINUTES}
+      OperationalNotifications__EscalationScanIntervalSeconds: ${NOTIFY_ESCALATION_SCAN_INTERVAL_SECONDS}
       ApiSecurity__MaxApiRequestBodyBytes: ${API_MAX_REQUEST_BODY_BYTES}
       ApiSecurity__MaxWebhookRequestBodyBytes: ${API_MAX_WEBHOOK_REQUEST_BODY_BYTES}
       ApiSecurity__ApiWriteRateLimitPermitLimit: ${API_WRITE_RATE_LIMIT_PERMIT_LIMIT}

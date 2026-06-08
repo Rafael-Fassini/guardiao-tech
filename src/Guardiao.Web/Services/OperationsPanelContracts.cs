@@ -33,6 +33,18 @@ public sealed record IncidentDetailModel(
     DateTime? EscalatedAtUtc,
     string? ReviewNotes);
 
+public sealed record IncidentNotificationModel(
+    Guid Id,
+    Guid IncidentId,
+    string EventType,
+    string Channel,
+    string DeliveryStatus,
+    int AttemptCount,
+    bool HasEvidence,
+    string Details,
+    DateTime CreatedAtUtc,
+    DateTime? CompletedAtUtc);
+
 public sealed record IncidentEvidenceModel(
     Guid Id,
     Guid IncidentId,

@@ -12,7 +12,6 @@ public sealed class CandidateEventCorrelationService
     private readonly ICandidateEventRepository _candidateEventRepository;
     private readonly ICorrelationDecisionRepository _correlationDecisionRepository;
     private readonly IIncidentRepository _incidentRepository;
-    private readonly INotificationPort _notificationPort;
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly IShortLivedStatePort _shortLivedStatePort;
     private readonly IClock _clock;
@@ -24,7 +23,6 @@ public sealed class CandidateEventCorrelationService
         ICandidateEventRepository candidateEventRepository,
         ICorrelationDecisionRepository correlationDecisionRepository,
         IIncidentRepository incidentRepository,
-        INotificationPort notificationPort,
         IAuditLogRepository auditLogRepository,
         IShortLivedStatePort shortLivedStatePort,
         IClock clock,
@@ -35,7 +33,6 @@ public sealed class CandidateEventCorrelationService
         _candidateEventRepository = candidateEventRepository;
         _correlationDecisionRepository = correlationDecisionRepository;
         _incidentRepository = incidentRepository;
-        _notificationPort = notificationPort;
         _auditLogRepository = auditLogRepository;
         _shortLivedStatePort = shortLivedStatePort;
         _clock = clock;
@@ -113,7 +110,6 @@ public sealed class CandidateEventCorrelationService
 
         var incident = new Incident(protectedCase.Id, candidateEvent.Id);
         await _incidentRepository.AddAsync(incident, cancellationToken);
-        await _notificationPort.NotifyIncidentCreatedAsync(incident, cancellationToken);
         await _auditLogRepository.AddAsync(
             new AuditLog(
                 AuditActorType.System,

@@ -35,6 +35,18 @@ public sealed record IncidentDetailResponse(
     DateTime? EscalatedAtUtc,
     string? ReviewNotes);
 
+public sealed record IncidentNotificationResponse(
+    Guid Id,
+    Guid IncidentId,
+    string EventType,
+    string Channel,
+    string DeliveryStatus,
+    int AttemptCount,
+    bool HasEvidence,
+    string Details,
+    DateTime CreatedAtUtc,
+    DateTime? CompletedAtUtc);
+
 public sealed record IncidentEvidenceResponse(
     Guid Id,
     Guid IncidentId,

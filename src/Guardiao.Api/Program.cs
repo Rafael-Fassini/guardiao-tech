@@ -132,6 +132,11 @@ builder.Services
     .Bind(builder.Configuration.GetSection(HousekeepingOptions.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<HousekeepingOptions>, HousekeepingOptionsValidator>();
+builder.Services
+    .AddOptions<OperationalNotificationsOptions>()
+    .Bind(builder.Configuration.GetSection(OperationalNotificationsOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<OperationalNotificationsOptions>, OperationalNotificationsOptionsValidator>();
 
 builder.Services.AddHttpClient<IVictimRegistryAccessTokenProvider, VictimRegistryClientCredentialsTokenProvider>()
     .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
@@ -141,6 +146,17 @@ builder.Services.AddHttpClient<VictimRegistryHttpClientAdapter>((sp, client) =>
         var options = sp.GetRequiredService<IOptions<VictimRegistryOptions>>().Value;
         client.BaseAddress = new Uri(options.BaseUrl);
         client.Timeout = TimeSpan.FromSeconds(10);
+    })
+    .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
+builder.Services.AddHttpClient<WebhookIncidentNotificationChannel>((sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<OperationalNotificationsOptions>>().Value;
+        if (Uri.TryCreate(options.WebhookUrl, UriKind.Absolute, out var webhookUri))
+        {
+            client.BaseAddress = new Uri($"{webhookUri.Scheme}://{webhookUri.Authority}");
+        }
+
+        client.Timeout = TimeSpan.FromSeconds(options.DeliveryTimeoutSeconds);
     })
     .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
 
@@ -166,7 +182,10 @@ builder.Services.AddSingleton<IShortLivedStateStore, RedisShortLivedStateStore>(
 builder.Services.AddSingleton<IShortLivedStatePort>(sp => sp.GetRequiredService<IShortLivedStateStore>() as IShortLivedStatePort
     ?? throw new InvalidOperationException("Short-lived state store does not implement application port."));
 builder.Services.AddSingleton<IRetentionPolicyProvider, RetentionPolicyProvider>();
-builder.Services.AddScoped<INotificationPort, NoOpNotificationPort>();
+builder.Services.AddScoped<PendingIncidentEscalationService>();
+builder.Services.AddScoped<INotificationPort, OperationalNotificationPort>();
+builder.Services.AddScoped<IIncidentNotificationChannel>(sp => sp.GetRequiredService<WebhookIncidentNotificationChannel>());
+builder.Services.AddScoped<IIncidentNotificationChannel, SmtpIncidentNotificationChannel>();
 builder.Services.AddScoped<IWebhookSignatureVerifier, HmacSha256WebhookSignatureVerifier>();
 builder.Services.AddSingleton<IBiometricTemplateExtractor, OpenCvOnnxBiometricTemplateExtractor>();
 builder.Services.AddSingleton<SensitiveDataRedactor>();
@@ -193,6 +212,7 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddHostedService<VictimRegistryWebhookWorker>();
 builder.Services.AddHostedService<VictimRegistryReconciliationBackgroundService>();
 builder.Services.AddHostedService<EvidenceEligibilityScanBackgroundService>();
+builder.Services.AddHostedService<PendingIncidentEscalationBackgroundService>();
 
 var app = builder.Build();
 

@@ -75,6 +75,16 @@ partial class GuardiaoDbContextModelSnapshot : ModelSnapshot
             entity.Property(x => x.Status).HasConversion<string>();
         });
 
+        modelBuilder.Entity<IncidentNotificationRecord>(entity =>
+        {
+            entity.ToTable("IncidentNotificationRecords");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventType);
+            entity.Property(x => x.Channel);
+            entity.Property(x => x.DeliveryStatus);
+            entity.Property(x => x.Details);
+        });
+
         modelBuilder.Entity<BiometricCandidateEvent>(entity =>
         {
             entity.ToTable("BiometricCandidateEvents");

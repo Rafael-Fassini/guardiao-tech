@@ -121,7 +121,6 @@ public class CandidateEventCorrelationServiceTests
         IShortLivedStatePort shortLivedStatePort)
     {
         var decisions = new Mock<ICorrelationDecisionRepository>();
-        var notifications = new Mock<INotificationPort>();
         var audits = new Mock<IAuditLogRepository>();
         var clock = new Mock<IClock>();
         clock.SetupGet(x => x.UtcNow).Returns(DateTime.UtcNow);
@@ -132,7 +131,6 @@ public class CandidateEventCorrelationServiceTests
             candidateEventRepository,
             decisions.Object,
             incidentRepository,
-            notifications.Object,
             audits.Object,
             shortLivedStatePort,
             clock.Object,

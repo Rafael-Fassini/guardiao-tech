@@ -110,7 +110,8 @@ public interface ICandidateEventPublisher
 
 public interface INotificationPort
 {
-    Task NotifyIncidentCreatedAsync(Incident incident, CancellationToken cancellationToken = default);
+    Task NotifyIncidentCreatedAsync(IncidentNotification notification, CancellationToken cancellationToken = default);
+    Task NotifyIncidentEscalatedAsync(IncidentNotification notification, CancellationToken cancellationToken = default);
 }
 
 public interface IMetricsPort
@@ -171,3 +172,12 @@ public sealed record CandidateEventEvidencePayload(
     string FileName,
     string ContentType,
     byte[] Content);
+
+public sealed record IncidentNotification(
+    Guid IncidentId,
+    Guid ProtectedCaseId,
+    Guid CandidateEventId,
+    DateTime CreatedAtUtc,
+    string Status,
+    bool HasEvidence,
+    DateTime? EscalatedAtUtc);

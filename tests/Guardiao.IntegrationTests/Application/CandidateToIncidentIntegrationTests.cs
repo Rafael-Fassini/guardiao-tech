@@ -2,7 +2,6 @@ using Guardiao.Application.Services;
 using Guardiao.Domain.Entities;
 using Guardiao.Domain.ValueObjects;
 using Guardiao.Infrastructure.Caching;
-using Guardiao.Infrastructure.Notifications;
 using Guardiao.Infrastructure.Options;
 using Guardiao.Infrastructure.Persistence;
 using Guardiao.Infrastructure.Repositories;
@@ -91,7 +90,6 @@ public class CandidateToIncidentIntegrationTests
             new CandidateEventRepository(db),
             new CorrelationDecisionRepository(db),
             new IncidentRepository(db),
-            new NoOpNotificationPort(),
             new AuditLogRepository(db),
             new RedisShortLivedStateStore(Options.Create(new RedisOptions { DefaultTtlSeconds = 30 })),
             new SystemClock(),

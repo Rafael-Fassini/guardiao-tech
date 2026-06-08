@@ -49,6 +49,43 @@ dotnet run --project src/Guardiao.Worker.Edge
 - Retention currently follows `RetentionMode.CaseBound` for incident evidence created in the pilot.
 - The API also runs a periodic eligibility scan that reports artifacts past their configured retention window. This scan reports candidates; it does not delete evidence automatically in this phase.
 
+## Operational Notifications
+- Incident creation now triggers backend operational notifications through configurable channels.
+- Supported pilot channels:
+  - HTTP webhook with optional HMAC signature header
+  - SMTP e-mail using a simple local or on-prem relay
+- Configure notification delivery through `OperationalNotifications` in `src/Guardiao.Api/appsettings.*` or the `.env` variables consumed by `docker compose`.
+- Minimum notification payload fields:
+  - `incidentId`
+  - `protectedCaseId`
+  - `candidateEventId`
+  - `createdAtUtc`
+  - `status`
+  - `hasEvidence`
+- Notification delivery failures do not roll back incident creation.
+- The API records notification history and exposes it to the operations panel under each incident detail page.
+
+## Pending Incident Escalation
+- The API runs a lightweight background scan for incidents still in `PendingReview`.
+- When `OperationalNotifications:EscalationWindowMinutes` expires:
+  - the incident receives `EscalatedAtUtc`
+  - an `incident.escalated` audit entry is written
+  - the API sends a second operational notification
+- Current pilot limitation:
+  - escalation marks the incident as escalated for operators without changing the domain status away from `PendingReview`
+  - this preserves the existing human review flow while still surfacing SLA breach state
+
+## Notification Test Tips
+- Webhook:
+  - point `NOTIFY_WEBHOOK_URL` to a local receiver such as `http://host.docker.internal:9000/guardiao/incidents`
+  - inspect `X-Guardiao-Event`, `X-Guardiao-Timestamp` and optional `X-Guardiao-Signature`
+- SMTP:
+  - for local tests, use a simple SMTP sink such as MailHog or another lab relay
+  - configure `NOTIFY_SMTP_HOST`, `NOTIFY_SMTP_PORT`, `NOTIFY_SMTP_SENDER` and `NOTIFY_SMTP_RECIPIENT`
+- Failure behavior:
+  - the API retries according to `OperationalNotifications:RetryAttempts` and `InitialRetryDelayMilliseconds`
+  - failures are visible in `/metrics`, audit entries and incident notification history
+
 ## Edge Inference Models
 - Detection model path:
   - local default: `models/haarcascade_frontalface_default.xml`

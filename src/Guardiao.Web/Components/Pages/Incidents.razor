@@ -20,6 +20,7 @@
                     <th>Status</th>
                     <th>Caso</th>
                     <th>Criado em</th>
+                    <th>Escalado em</th>
                     <th></th>
                 </tr>
             </thead>
@@ -31,6 +32,7 @@
                         <td>@incident.Status</td>
                         <td>@incident.ProtectedCaseId.ToString()[..8]</td>
                         <td>@incident.CreatedAtUtc.ToLocalTime()</td>
+                        <td>@(incident.EscalatedAtUtc?.ToLocalTime().ToString() ?? "-")</td>
                         <td><a href="/incidents/@incident.Id">Abrir</a></td>
                     </tr>
                 }

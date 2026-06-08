@@ -71,4 +71,19 @@ public class Incident
         Status = IncidentStatus.Escalated;
         EscalatedAtUtc = DateTime.UtcNow;
     }
+
+    public void MarkPendingReviewEscalated()
+    {
+        if (Status != IncidentStatus.PendingReview)
+        {
+            throw new ForbiddenStateTransitionException("Only incidents pending review can be escalated by SLA.");
+        }
+
+        if (EscalatedAtUtc is not null)
+        {
+            throw new ForbiddenStateTransitionException("Incident was already escalated.");
+        }
+
+        EscalatedAtUtc = DateTime.UtcNow;
+    }
 }

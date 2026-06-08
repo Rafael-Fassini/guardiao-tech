@@ -20,6 +20,7 @@ public class CandidateEventsController : ControllerBase
     private readonly CandidateEventCorrelationService _correlationService;
     private readonly GuardiaoDbContext _dbContext;
     private readonly IEvidenceStoragePort _storage;
+    private readonly INotificationPort _notificationPort;
     private readonly IMetricsPort _metrics;
     private readonly ILogger<CandidateEventsController> _logger;
 
@@ -27,12 +28,14 @@ public class CandidateEventsController : ControllerBase
         CandidateEventCorrelationService correlationService,
         GuardiaoDbContext dbContext,
         IEvidenceStoragePort storage,
+        INotificationPort notificationPort,
         IMetricsPort metrics,
         ILogger<CandidateEventsController> logger)
     {
         _correlationService = correlationService;
         _dbContext = dbContext;
         _storage = storage;
+        _notificationPort = notificationPort;
         _metrics = metrics;
         _logger = logger;
     }
@@ -75,9 +78,22 @@ public class CandidateEventsController : ControllerBase
             _metrics.IncrementCounter("candidate_events_incidents_created_total");
         }
 
+        var persistedEvidenceCount = 0;
         if (!result.WasDuplicate && result.Incident is not null && request.Evidences.Count > 0)
         {
-            await PersistEvidenceArtifactsAsync(candidateEvent, result.Incident, request.Evidences, cancellationToken);
+            persistedEvidenceCount = await PersistEvidenceArtifactsAsync(candidateEvent, result.Incident, request.Evidences, cancellationToken);
+        }
+
+        if (!result.WasDuplicate && result.Incident is not null && result.Decision.CreatesIncident)
+        {
+            await _notificationPort.NotifyIncidentCreatedAsync(new IncidentNotification(
+                result.Incident.Id,
+                result.Incident.ProtectedCaseId,
+                result.Incident.CandidateEventId,
+                result.Incident.CreatedAtUtc,
+                result.Incident.Status.ToString(),
+                persistedEvidenceCount > 0,
+                result.Incident.EscalatedAtUtc), cancellationToken);
         }
 
         return Ok(new CandidateEventIngestionResponse(
@@ -88,12 +104,14 @@ public class CandidateEventsController : ControllerBase
             result.Incident?.Id));
     }
 
-    private async Task PersistEvidenceArtifactsAsync(
+    private async Task<int> PersistEvidenceArtifactsAsync(
         BiometricCandidateEvent candidateEvent,
         Incident incident,
         IReadOnlyCollection<CandidateEventEvidenceRequest> evidences,
         CancellationToken cancellationToken)
     {
+        var persistedCount = 0;
+
         foreach (var evidence in evidences)
         {
             try
@@ -125,6 +143,7 @@ public class CandidateEventsController : ControllerBase
 
                 _metrics.IncrementCounter("evidences_created_total", ("artifact", artifactType.ToString()));
                 _metrics.AddCounter("evidence_bytes_uploaded_total", evidence.Content.LongLength, ("artifact", artifactType.ToString()));
+                persistedCount++;
                 _logger.LogInformation(
                     "Evidence artifact persisted. IncidentId={IncidentId} CandidateEventId={CandidateEventId} ArtifactType={ArtifactType}",
                     incident.Id,
@@ -144,6 +163,7 @@ public class CandidateEventsController : ControllerBase
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        return persistedCount;
     }
 
     private static EvidenceArtifactType ParseArtifactType(string artifactType)

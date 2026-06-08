@@ -225,6 +225,16 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 ["ApiSecurity:EnableSwaggerUi"] = "false",
                 ["BiometricProcessing:DetectionModelPath"] = DetectionModelPath,
                 ["BiometricProcessing:EmbeddingModelPath"] = EmbeddingModelPath,
+                ["OperationalNotifications:EnableWebhook"] = "true",
+                ["OperationalNotifications:WebhookUrl"] = "https://notifications.test/guardiao/incidents",
+                ["OperationalNotifications:WebhookSecret"] = "notify-test-secret",
+                ["OperationalNotifications:EnableSmtp"] = "false",
+                ["OperationalNotifications:DeliveryTimeoutSeconds"] = "2",
+                ["OperationalNotifications:RetryAttempts"] = "3",
+                ["OperationalNotifications:InitialRetryDelayMilliseconds"] = "1",
+                ["OperationalNotifications:EnableEscalation"] = "true",
+                ["OperationalNotifications:EscalationWindowMinutes"] = "5",
+                ["OperationalNotifications:EscalationScanIntervalSeconds"] = "60",
                 ["ApiSecurity:MaxApiRequestBodyBytes"] = "1048576",
                 ["ApiSecurity:MaxWebhookRequestBodyBytes"] = "16384",
                 ["ApiSecurity:ApiWriteRateLimitPermitLimit"] = "100",
@@ -268,17 +278,45 @@ public sealed class FakeBiometricTemplateExtractor : IBiometricTemplateExtractor
 public sealed class FakeVictimRegistryHandler : HttpMessageHandler
 {
     private readonly Dictionary<string, object> _cases = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Queue<HttpStatusCode> _webhookResponses = new();
+
+    public List<string> WebhookPayloads { get; } = [];
 
     public void SetCase(string externalCaseId, object payload)
     {
         _cases[externalCaseId] = payload;
     }
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    public void EnqueueWebhookResponse(HttpStatusCode statusCode)
+    {
+        _webhookResponses.Enqueue(statusCode);
+    }
+
+    public void ResetWebhook()
+    {
+        WebhookPayloads.Clear();
+        _webhookResponses.Clear();
+    }
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (request.RequestUri is null)
         {
             throw new InvalidOperationException("Missing request URI.");
+        }
+
+        if (request.RequestUri.Host.Equals("notifications.test", StringComparison.OrdinalIgnoreCase))
+        {
+            var payload = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            WebhookPayloads.Add(payload);
+
+            var statusCode = _webhookResponses.Count > 0
+                ? _webhookResponses.Dequeue()
+                : HttpStatusCode.OK;
+
+            return new HttpResponseMessage(statusCode);
         }
 
         if (request.RequestUri.AbsolutePath.StartsWith("/api/v1/cases/") &&
@@ -288,23 +326,23 @@ public sealed class FakeVictimRegistryHandler : HttpMessageHandler
             var externalCaseId = request.RequestUri.AbsolutePath.Split('/').Last();
             if (_cases.TryGetValue(externalCaseId, out var payload))
             {
-                return Task.FromResult(JsonResponse(payload));
+                return JsonResponse(payload);
             }
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
         if (request.RequestUri.AbsolutePath == "/api/v1/cases")
         {
-            return Task.FromResult(JsonResponse(new { items = Array.Empty<object>() }));
+            return JsonResponse(new { items = Array.Empty<object>() });
         }
 
         if (request.RequestUri.AbsolutePath.EndsWith("/media", StringComparison.OrdinalIgnoreCase))
         {
-            return Task.FromResult(JsonResponse(Array.Empty<object>()));
+            return JsonResponse(Array.Empty<object>());
         }
 
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        return new HttpResponseMessage(HttpStatusCode.NotFound);
     }
 
     private static HttpResponseMessage JsonResponse(object payload)

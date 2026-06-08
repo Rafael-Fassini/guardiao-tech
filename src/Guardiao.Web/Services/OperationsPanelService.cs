@@ -28,6 +28,9 @@ public sealed class OperationsPanelService
     public async Task<List<IncidentEvidenceModel>> ListIncidentEvidencesAsync(Guid incidentId, CancellationToken cancellationToken = default)
         => await GetRequiredAsync<List<IncidentEvidenceModel>>($"/api/incidents/{incidentId}/evidences", cancellationToken);
 
+    public async Task<List<IncidentNotificationModel>> ListIncidentNotificationsAsync(Guid incidentId, CancellationToken cancellationToken = default)
+        => await GetRequiredAsync<List<IncidentNotificationModel>>($"/api/incidents/{incidentId}/notifications", cancellationToken);
+
     public async Task<string> GetIncidentEvidenceDataUrlAsync(Guid incidentId, Guid evidenceId, string contentType, CancellationToken cancellationToken = default)
     {
         await EnsureAuthenticatedAsync();

@@ -16,6 +16,7 @@ public class GuardiaoDbContext : DbContext
     public DbSet<PersonProjection> PersonProjections => Set<PersonProjection>();
     public DbSet<MonitoringRule> MonitoringRules => Set<MonitoringRule>();
     public DbSet<Incident> Incidents => Set<Incident>();
+    public DbSet<IncidentNotificationRecord> IncidentNotificationRecords => Set<IncidentNotificationRecord>();
     public DbSet<BiometricCandidateEvent> BiometricCandidateEvents => Set<BiometricCandidateEvent>();
     public DbSet<CorrelationDecision> CorrelationDecisions => Set<CorrelationDecision>();
     public DbSet<BiometricTemplate> BiometricTemplates => Set<BiometricTemplate>();
@@ -67,6 +68,15 @@ public class GuardiaoDbContext : DbContext
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Status).HasConversion<string>();
+        });
+
+        modelBuilder.Entity<IncidentNotificationRecord>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventType);
+            entity.Property(x => x.Channel);
+            entity.Property(x => x.DeliveryStatus);
+            entity.Property(x => x.Details);
         });
 
         modelBuilder.Entity<BiometricCandidateEvent>(entity =>

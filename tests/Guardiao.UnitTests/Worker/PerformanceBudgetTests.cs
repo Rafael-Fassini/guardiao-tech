@@ -122,7 +122,6 @@ public class PerformanceBudgetTests
         incidentRepo.Setup(x => x.FindLatestActiveByCaseAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Incident?)null);
 
-        var notification = new Mock<INotificationPort>();
         var audit = new Mock<IAuditLogRepository>();
         var shortLivedState = new Mock<IShortLivedStatePort>();
         shortLivedState.Setup(x => x.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -134,7 +133,6 @@ public class PerformanceBudgetTests
             candidateRepo.Object,
             decisionRepo.Object,
             incidentRepo.Object,
-            notification.Object,
             audit.Object,
             shortLivedState.Object,
             new SystemClock(),

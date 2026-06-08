@@ -22,6 +22,7 @@ public class CandidateEventsControllerIntegrationTests : IClassFixture<GuardiaoA
     [Fact]
     public async Task PostCandidateEvent_ShouldPersistAndCreateIncident_WhenCorrelationMatches()
     {
+        _factory.RegistryHandler.ResetWebhook();
         var caseId = Guid.NewGuid();
         var cameraId = Guid.NewGuid();
         var siteId = Guid.NewGuid();
@@ -92,11 +93,22 @@ public class CandidateEventsControllerIntegrationTests : IClassFixture<GuardiaoA
         Assert.True(await verifyDb.Incidents.AnyAsync(x => x.CandidateEventId == eventId));
         Assert.True(await verifyDb.CorrelationDecisions.AnyAsync(x => x.CandidateEventId == eventId));
         Assert.Equal(2, await verifyDb.EvidenceArtifacts.CountAsync(x => x.CandidateEventId == eventId));
+        var incidentId = await verifyDb.Incidents
+            .Where(x => x.CandidateEventId == eventId)
+            .Select(x => x.Id)
+            .SingleAsync();
+        var notification = await verifyDb.IncidentNotificationRecords.SingleAsync(x => x.IncidentId == incidentId);
+        Assert.Equal("incident.created", notification.EventType);
+        Assert.Equal("Sent", notification.DeliveryStatus);
+        Assert.True(notification.HasEvidence);
+        Assert.Single(_factory.RegistryHandler.WebhookPayloads);
+        Assert.Contains("\"hasEvidence\":true", _factory.RegistryHandler.WebhookPayloads.Single(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public async Task PostCandidateEvent_ShouldBeIdempotent_ForDuplicateEventId()
     {
+        _factory.RegistryHandler.ResetWebhook();
         var caseId = Guid.NewGuid();
         var cameraId = Guid.NewGuid();
         var siteId = Guid.NewGuid();
@@ -150,5 +162,132 @@ public class CandidateEventsControllerIntegrationTests : IClassFixture<GuardiaoA
         Assert.Equal(1, await verifyDb.BiometricCandidateEvents.CountAsync(x => x.Id == eventId));
         Assert.Equal(1, await verifyDb.Incidents.CountAsync(x => x.CandidateEventId == eventId));
         Assert.Equal(1, await verifyDb.CorrelationDecisions.CountAsync(x => x.CandidateEventId == eventId));
+        Assert.Single(_factory.RegistryHandler.WebhookPayloads);
+    }
+
+    [Fact]
+    public async Task PostCandidateEvent_ShouldRetryNotification_WhenWebhookFailsTransiently()
+    {
+        _factory.RegistryHandler.ResetWebhook();
+        _factory.RegistryHandler.EnqueueWebhookResponse(HttpStatusCode.InternalServerError);
+        _factory.RegistryHandler.EnqueueWebhookResponse(HttpStatusCode.OK);
+
+        var caseId = Guid.NewGuid();
+        var cameraId = Guid.NewGuid();
+        var siteId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+            var protectedCase = new ProtectedCase(
+                new ExternalCaseId("case-retry"),
+                1,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                MonitoringStatus.Enabled,
+                ConsentStatus.Granted);
+            db.ProtectedCases.Add(protectedCase);
+            db.MonitoringRules.Add(new MonitoringRule(
+                protectedCase.Id,
+                new CameraScope(siteId, cameraId),
+                new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)),
+                true));
+            await db.SaveChangesAsync();
+            caseId = protectedCase.Id;
+        }
+
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Worker-Id", "edge-worker-01");
+        client.DefaultRequestHeaders.Add("X-Worker-Auth", "worker-test-secret");
+
+        var eventId = Guid.NewGuid();
+        var response = await client.PostAsJsonAsync("/api/candidate-events", new
+        {
+            eventId,
+            protectedCaseId = caseId,
+            siteId,
+            cameraId,
+            matchScore = 0.97,
+            occurredAtUtc = DateTime.UtcNow
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+        var incidentId = await verifyDb.Incidents
+            .Where(x => x.CandidateEventId == eventId)
+            .Select(x => x.Id)
+            .SingleAsync();
+        var record = await verifyDb.IncidentNotificationRecords
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstAsync(x => x.IncidentId == incidentId && x.EventType == "incident.created");
+
+        Assert.Equal("Sent", record.DeliveryStatus);
+        Assert.Equal(2, record.AttemptCount);
+        Assert.Equal(2, _factory.RegistryHandler.WebhookPayloads.Count);
+    }
+
+    [Fact]
+    public async Task PostCandidateEvent_ShouldNotBlockIncidentCreation_WhenNotificationFails()
+    {
+        _factory.RegistryHandler.ResetWebhook();
+        _factory.RegistryHandler.EnqueueWebhookResponse(HttpStatusCode.InternalServerError);
+        _factory.RegistryHandler.EnqueueWebhookResponse(HttpStatusCode.InternalServerError);
+        _factory.RegistryHandler.EnqueueWebhookResponse(HttpStatusCode.InternalServerError);
+
+        var caseId = Guid.NewGuid();
+        var cameraId = Guid.NewGuid();
+        var siteId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+            var protectedCase = new ProtectedCase(
+                new ExternalCaseId("case-notify-fail"),
+                1,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                MonitoringStatus.Enabled,
+                ConsentStatus.Granted);
+            db.ProtectedCases.Add(protectedCase);
+            db.MonitoringRules.Add(new MonitoringRule(
+                protectedCase.Id,
+                new CameraScope(siteId, cameraId),
+                new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)),
+                true));
+            await db.SaveChangesAsync();
+            caseId = protectedCase.Id;
+        }
+
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Worker-Id", "edge-worker-01");
+        client.DefaultRequestHeaders.Add("X-Worker-Auth", "worker-test-secret");
+
+        var eventId = Guid.NewGuid();
+        var response = await client.PostAsJsonAsync("/api/candidate-events", new
+        {
+            eventId,
+            protectedCaseId = caseId,
+            siteId,
+            cameraId,
+            matchScore = 0.88,
+            occurredAtUtc = DateTime.UtcNow
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+        Assert.True(await verifyDb.Incidents.AnyAsync(x => x.CandidateEventId == eventId));
+        var incidentId = await verifyDb.Incidents
+            .Where(x => x.CandidateEventId == eventId)
+            .Select(x => x.Id)
+            .SingleAsync();
+        var record = await verifyDb.IncidentNotificationRecords
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstAsync(x => x.IncidentId == incidentId && x.EventType == "incident.created");
+        Assert.Equal("Failed", record.DeliveryStatus);
+        Assert.Equal(3, record.AttemptCount);
     }
 }

@@ -25,4 +25,15 @@ public class IncidentTests
 
         Assert.Equal(IncidentStatus.Escalated, incident.Status);
     }
+
+    [Fact]
+    public void MarkPendingReviewEscalated_ShouldSetTimestamp_WithoutChangingStatus()
+    {
+        var incident = new Incident(Guid.NewGuid(), Guid.NewGuid());
+
+        incident.MarkPendingReviewEscalated();
+
+        Assert.Equal(IncidentStatus.PendingReview, incident.Status);
+        Assert.NotNull(incident.EscalatedAtUtc);
+    }
 }

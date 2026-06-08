@@ -94,6 +94,47 @@ public class OperationsPanelIntegrationTests
     }
 
     [Fact]
+    public async Task GetIncidentDetail_ShouldRenderEscalationAndNotificationHistory_WhenAuthenticated()
+    {
+        using var factory = new GuardiaoWebFactory();
+        var incident = new IncidentState
+        {
+            Id = Guid.NewGuid(),
+            ProtectedCaseId = Guid.NewGuid(),
+            CandidateEventId = Guid.NewGuid(),
+            Status = "PendingReview",
+            CreatedAtUtc = DateTime.UtcNow.AddMinutes(-20),
+            EscalatedAtUtc = DateTime.UtcNow.AddMinutes(-5)
+        };
+        factory.ApiHandler.Incidents.Add(incident);
+        factory.ApiHandler.IncidentNotifications.Add(new IncidentNotificationState
+        {
+            Id = Guid.NewGuid(),
+            IncidentId = incident.Id,
+            EventType = "incident.escalated",
+            Channel = "webhook",
+            DeliveryStatus = "Sent",
+            AttemptCount = 2,
+            HasEvidence = true,
+            Details = "status=PendingReview;has_evidence=true",
+            CreatedAtUtc = DateTime.UtcNow.AddMinutes(-5),
+            CompletedAtUtc = DateTime.UtcNow.AddMinutes(-5)
+        });
+
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, "operator.ana", "operator");
+
+        var response = await client.GetAsync($"/incidents/{incident.Id}");
+        var html = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("Escalonado", html);
+        Assert.Contains("Notificacoes operacionais", html);
+        Assert.Contains("incident.escalated", html);
+        Assert.Contains("webhook", html);
+    }
+
+    [Fact]
     public async Task GetIncidentDetail_ShouldRenderEvidenceSection_WhenAuthenticated()
     {
         using var factory = new GuardiaoWebFactory();
@@ -307,6 +348,7 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
     public List<AuditEntryState> AuditEntries { get; } = [];
     public List<BiometricTemplateState> BiometricTemplates { get; } = [];
     public List<IncidentEvidenceState> IncidentEvidences { get; } = [];
+    public List<IncidentNotificationState> IncidentNotifications { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -366,6 +408,16 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
             {
                 Content = content
             };
+        }
+
+        if (request.Method == HttpMethod.Get && segments.Length == 4 && segments[0] == "api" && segments[1] == "incidents" && segments[3] == "notifications")
+        {
+            var incidentId = Guid.Parse(segments[2]);
+            return Json(IncidentNotifications
+                .Where(x => x.IncidentId == incidentId)
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .Select(x => x.ToModel())
+                .ToArray());
         }
 
         if (request.Method == HttpMethod.Post && segments.Length == 5 && segments[0] == "api" && segments[1] == "incidents" && segments[3] == "review")
@@ -610,6 +662,23 @@ public sealed class IncidentEvidenceState
 
     public IncidentEvidenceModel ToModel()
         => new(Id, IncidentId, CandidateEventId, ArtifactType, ContentType, CreatedAtUtc);
+}
+
+public sealed class IncidentNotificationState
+{
+    public Guid Id { get; set; }
+    public Guid IncidentId { get; set; }
+    public string EventType { get; set; } = string.Empty;
+    public string Channel { get; set; } = string.Empty;
+    public string DeliveryStatus { get; set; } = string.Empty;
+    public int AttemptCount { get; set; }
+    public bool HasEvidence { get; set; }
+    public string Details { get; set; } = string.Empty;
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime? CompletedAtUtc { get; set; }
+
+    public IncidentNotificationModel ToModel()
+        => new(Id, IncidentId, EventType, Channel, DeliveryStatus, AttemptCount, HasEvidence, Details, CreatedAtUtc, CompletedAtUtc);
 }
 
 public sealed class ProtectedCaseState
