@@ -32,10 +32,21 @@ public sealed class EdgeHealthEndpointService : BackgroundService
     {
         _listener.Start();
 
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            var client = await _listener.AcceptTcpClientAsync(stoppingToken);
-            _ = Task.Run(() => HandleAsync(client, stoppingToken), stoppingToken);
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                var client = await _listener.AcceptTcpClientAsync(stoppingToken);
+                _ = Task.Run(() => HandleAsync(client, stoppingToken), stoppingToken);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Expected during host shutdown.
+        }
+        catch (SocketException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Listener is stopped during host shutdown.
         }
     }
 

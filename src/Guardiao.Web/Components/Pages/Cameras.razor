@@ -9,26 +9,48 @@
 <div class="split">
     <section class="panel">
         <h2>Sites</h2>
-        @foreach (var site in sites)
+        @if (isLoading)
         {
-            <div class="row">
-                <strong>@site.Name</strong>
-                <span>@site.AddressLine</span>
-            </div>
+            <p class="panel-empty">Carregando sites e cameras.</p>
+        }
+        else if (!string.IsNullOrWhiteSpace(loadError))
+        {
+            <p class="panel-empty panel-error">@loadError</p>
+        }
+        else if (sites.Count == 0)
+        {
+            <p class="panel-empty">Nenhum site disponivel.</p>
+        }
+        else
+        {
+            @foreach (var site in sites)
+            {
+                <div class="row">
+                    <strong>@site.Name</strong>
+                    <span>@site.AddressLine</span>
+                </div>
+            }
         }
     </section>
 
     <section class="panel">
         <h2>Cameras</h2>
-        @foreach (var camera in cameras)
+        @if (!isLoading && string.IsNullOrWhiteSpace(loadError) && cameras.Count == 0)
         {
-            <div class="camera-row">
-                <div>
-                    <strong>@camera.Name</strong>
-                    <div class="muted">@camera.StreamEndpoint</div>
+            <p class="panel-empty">Nenhuma camera disponivel.</p>
+        }
+        else
+        {
+            @foreach (var camera in cameras)
+            {
+                <div class="camera-row">
+                    <div>
+                        <strong>@camera.Name</strong>
+                        <div class="muted">@camera.StreamEndpoint</div>
+                    </div>
+                    <button class="ghost" @onclick="() => Toggle(camera)">@((camera.IsEnabled ? "Desabilitar" : "Habilitar"))</button>
                 </div>
-                <button class="ghost" @onclick="() => Toggle(camera)">@((camera.IsEnabled ? "Desabilitar" : "Habilitar"))</button>
-            </div>
+            }
         }
     </section>
 </div>
@@ -60,6 +82,10 @@
         font-size: 0.92rem;
     }
 
+    .panel-error {
+        color: #912f2f;
+    }
+
     @@media (max-width: 900px) {
         .split {
             grid-template-columns: 1fr;
@@ -70,16 +96,46 @@
 @code {
     private List<SiteModel> sites = [];
     private List<CameraModel> cameras = [];
+    private bool isLoading = true;
+    private string? loadError;
 
     protected override async Task OnInitializedAsync()
     {
-        sites = await PanelService.ListSitesAsync();
-        cameras = await PanelService.ListCamerasAsync();
+        await LoadAsync();
     }
 
     private async Task Toggle(CameraModel camera)
     {
-        await PanelService.ToggleCameraAsync(camera.Id, !camera.IsEnabled);
-        cameras = await PanelService.ListCamerasAsync();
+        try
+        {
+            await PanelService.ToggleCameraAsync(camera.Id, !camera.IsEnabled);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            loadError = $"Nao foi possivel atualizar o estado da camera: {ex.Message}";
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        loadError = null;
+
+        try
+        {
+            sites = await PanelService.ListSitesAsync();
+            cameras = await PanelService.ListCamerasAsync();
+        }
+        catch (Exception ex)
+        {
+            sites = [];
+            cameras = [];
+            loadError = $"Nao foi possivel carregar sites e cameras: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 }

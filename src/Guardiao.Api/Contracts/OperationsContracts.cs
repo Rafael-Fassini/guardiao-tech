@@ -8,7 +8,45 @@ public sealed record OperationsSummaryResponse(
     int CameraCount,
     int AuditEntryCount,
     IReadOnlyCollection<RecentIncidentResponse> RecentIncidents,
-    IReadOnlyCollection<AuditEntryResponse> RecentAuditEntries);
+    IReadOnlyCollection<AuditEntryResponse> RecentAuditEntries,
+    IReadOnlyCollection<CameraOperationalViewResponse> CameraViews);
+
+public sealed record CameraOperationalViewResponse(
+    Guid CameraId,
+    Guid SiteId,
+    string CameraName,
+    string SiteName,
+    bool IsEnabled,
+    string StreamEndpoint,
+    DateTime? LastDetectionAtUtc,
+    EvidencePreviewResponse? LatestSnapshot,
+    IReadOnlyCollection<DetectedSubjectResponse> RecentProtectedWomen,
+    AggressorPresenceAlertResponse? ActiveAlert);
+
+public sealed record EvidencePreviewResponse(
+    Guid IncidentId,
+    Guid EvidenceId,
+    string ContentType,
+    DateTime CapturedAtUtc);
+
+public sealed record DetectedSubjectResponse(
+    Guid ProtectedCaseId,
+    Guid PersonProjectionId,
+    string FullName,
+    string SubjectRole,
+    bool IsBystander,
+    string IncidentStatus,
+    double MatchScore,
+    DateTime DetectedAtUtc,
+    EvidencePreviewResponse? Snapshot);
+
+public sealed record AggressorPresenceAlertResponse(
+    Guid ProtectedCaseId,
+    string FullName,
+    double MatchScore,
+    DateTime DetectedAtUtc,
+    IReadOnlyCollection<string> NearbyProtectedWomen,
+    EvidencePreviewResponse? Snapshot);
 
 public sealed record RecentIncidentResponse(
     Guid Id,
@@ -58,6 +96,7 @@ public sealed record IncidentEvidenceResponse(
 public sealed record ProtectedCaseListItemResponse(
     Guid Id,
     string ExternalCaseId,
+    string SubjectRole,
     long Version,
     string MonitoringStatus,
     string ConsentStatus,
@@ -67,6 +106,7 @@ public sealed record ProtectedCaseListItemResponse(
 public sealed record ProtectedCaseDetailResponse(
     Guid Id,
     string ExternalCaseId,
+    string SubjectRole,
     long Version,
     string MonitoringStatus,
     string ConsentStatus,

@@ -25,11 +25,24 @@ dotnet run --project src/Guardiao.Worker.Edge
 - Place edge model files under `models/` as described in `models/README.md`
 - Start infrastructure and apps with `docker compose up -d`
 - Run `bash scripts/post-deploy-smoke.sh`
+- Configure the pilot camera through `.env`:
+  - `EDGE_CAMERA_0_SOURCE=webcam://0` for a local USB/notebook camera
+  - `EDGE_CAMERA_0_SOURCE=rtsp://usuario:senha@host:554/stream` for an IP camera
+  - keep `EDGE_CAMERA_0_ID`, `EDGE_CAMERA_0_SITE_ID` and `EDGE_CAMERA_0_PROTECTED_CASE_ID` aligned with the records created for the pilot case
 - Treat `/health` as process liveness only.
 - Treat `/ready` as dependency readiness:
   - API checks database reachability, pending migrations and local object storage writability.
   - Web checks authenticated reachability to the operations API.
   - Worker checks recent gallery refresh success and recent camera loop success.
+
+## Camera Connectivity Notes
+- `webcam://<indice>` now captures a real frame through OpenCV `VideoCapture`.
+- `rtsp://...` now opens the stream directly in the worker and publishes real candidate events to the API.
+- If the local OpenCvSharp `videoio` runtime is unavailable on the host, the worker falls back to `ffmpeg` for single-frame capture while keeping OpenCV/ONNX in the detection and embedding stages.
+- For notebook/USB cameras during development:
+  - prefer running `Guardiao.Worker.Edge` locally with `dotnet run --project src/Guardiao.Worker.Edge`
+  - or expose `/dev/video*` manually to the worker container if you need webcam capture inside Docker
+- For RTSP/IP cameras, `docker compose` is the simplest path because no host device mapping is required.
 
 ## Biometric Enrollment Flow
 - Open the operations panel and navigate to a case detail page.

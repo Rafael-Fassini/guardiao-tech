@@ -40,7 +40,7 @@ public class PerformanceBudgetTests
             ]
         };
 
-        var capturePort = new AdaptiveCameraCaptureAdapter();
+        var capturePort = new StubCameraCapturePort();
         var detector = new DeterministicFaceDetectorPort(Options.Create(options));
         var tracker = new DeterministicFaceTrackerPort();
         var embedder = new DeterministicFaceEmbedderPort();
@@ -158,6 +158,16 @@ public class PerformanceBudgetTests
         var p95Index = Math.Max(0, (int)Math.Ceiling(samples.Count * 0.95) - 1);
         var p95 = samples[p95Index];
         return new PerformanceStageResult(stageName, budgetP95Ms, p95, p95 <= budgetP95Ms);
+    }
+}
+
+file sealed class StubCameraCapturePort : ICameraCapturePort
+{
+    private static readonly byte[] FrameBytes = [1, 2, 3, 4];
+
+    public Task<Stream> CaptureFrameAsync(Camera camera, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<Stream>(new MemoryStream(FrameBytes, writable: false));
     }
 }
 

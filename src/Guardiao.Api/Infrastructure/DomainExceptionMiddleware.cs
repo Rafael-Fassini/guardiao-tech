@@ -1,5 +1,6 @@
 using Guardiao.Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 
 namespace Guardiao.Api.Infrastructure;
 
@@ -7,11 +8,16 @@ public sealed class DomainExceptionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<DomainExceptionMiddleware> _logger;
+    private readonly IHostEnvironment _environment;
 
-    public DomainExceptionMiddleware(RequestDelegate next, ILogger<DomainExceptionMiddleware> logger)
+    public DomainExceptionMiddleware(
+        RequestDelegate next,
+        ILogger<DomainExceptionMiddleware> logger,
+        IHostEnvironment environment)
     {
         _next = next;
         _logger = logger;
+        _environment = environment;
     }
 
     public async Task Invoke(HttpContext context)
@@ -38,7 +44,10 @@ public sealed class DomainExceptionMiddleware
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled request failure. CorrelationId={CorrelationId}", context.TraceIdentifier);
-            await WriteProblemAsync(context, StatusCodes.Status500InternalServerError, "Request failed.", "An unexpected error occurred.");
+            var detail = _environment.IsDevelopment()
+                ? ex.ToString()
+                : "An unexpected error occurred.";
+            await WriteProblemAsync(context, StatusCodes.Status500InternalServerError, "Request failed.", detail);
         }
     }
 

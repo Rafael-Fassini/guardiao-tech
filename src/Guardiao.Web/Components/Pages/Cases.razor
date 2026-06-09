@@ -7,7 +7,15 @@
 <h1>Casos monitorados</h1>
 
 <section class="table-panel">
-    @if (items.Count == 0)
+    @if (isLoading)
+    {
+        <p class="panel-empty">Carregando casos monitorados.</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <p class="panel-empty panel-error">@loadError</p>
+    }
+    else if (items.Count == 0)
     {
         <p class="panel-empty">Nenhum caso sincronizado.</p>
     }
@@ -18,6 +26,7 @@
                 <tr>
                     <th>Id</th>
                     <th>Externo</th>
+                    <th>Perfil</th>
                     <th>Status</th>
                     <th>Versao</th>
                     <th></th>
@@ -29,6 +38,7 @@
                     <tr>
                         <td>@item.Id.ToString()[..8]</td>
                         <td>@item.ExternalCaseId</td>
+                        <td><span class="role-chip">@DescribeRole(item.SubjectRole)</span></td>
                         <td>@item.MonitoringStatus</td>
                         <td>@item.Version</td>
                         <td><a href="/cases/@item.Id">Regras</a></td>
@@ -57,13 +67,49 @@
         border-bottom: 1px solid rgba(216,203,182,0.6);
         text-align: left;
     }
+
+    .role-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(164,81,43,0.12);
+        color: var(--accent);
+        font-size: 0.9rem;
+    }
+
+    .panel-error {
+        color: #912f2f;
+    }
 </style>
 
 @code {
     private List<ProtectedCaseListItemModel> items = [];
+    private bool isLoading = true;
+    private string? loadError;
 
     protected override async Task OnInitializedAsync()
     {
-        items = await PanelService.ListCasesAsync();
+        isLoading = true;
+        loadError = null;
+
+        try
+        {
+            items = await PanelService.ListCasesAsync();
+        }
+        catch (Exception ex)
+        {
+            items = [];
+            loadError = $"Nao foi possivel carregar os casos monitorados: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
+
+    private static string DescribeRole(string subjectRole)
+        => string.Equals(subjectRole, "Aggressor", StringComparison.OrdinalIgnoreCase)
+            ? "Agressor monitorado"
+            : "Mulher protegida";
 }

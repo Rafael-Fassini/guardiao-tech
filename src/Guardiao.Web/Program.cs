@@ -21,7 +21,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = "guardiao-ops-auth";
     });
 builder.Services.AddAuthorization();
-builder.Services.AddTransient<OperationsApiAuthenticationHandler>();
 builder.Services
     .AddOptions<OperationsPanelOptions>()
     .Bind(builder.Configuration.GetSection(OperationsPanelOptions.SectionName))
@@ -32,9 +31,9 @@ builder.Services.AddHttpClient<OperationsPanelService>((sp, client) =>
         var options = sp.GetRequiredService<IOptions<OperationsPanelOptions>>().Value;
         client.BaseAddress = new Uri(options.BaseUrl);
         client.Timeout = TimeSpan.FromSeconds(10);
+        client.DefaultRequestHeaders.TryAddWithoutValidation("X-Panel-Auth", options.SharedSecret);
     })
-    .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler())
-    .AddHttpMessageHandler<OperationsApiAuthenticationHandler>();
+    .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
 builder.Services
     .AddOptions<WebSecurityOptions>()
     .Bind(builder.Configuration.GetSection(WebSecurityOptions.SectionName))

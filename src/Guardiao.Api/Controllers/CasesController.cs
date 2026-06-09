@@ -31,6 +31,7 @@ public class CasesController : ControllerBase
             .Select(x => new ProtectedCaseListItemResponse(
                 x.Id,
                 x.ExternalCaseId.Value,
+                x.SubjectRole.ToString(),
                 x.Version,
                 x.MonitoringStatus.Value,
                 x.ConsentStatus.Value,
@@ -49,6 +50,7 @@ public class CasesController : ControllerBase
             .Select(x => new ProtectedCaseDetailResponse(
                 x.Id,
                 x.ExternalCaseId.Value,
+                x.SubjectRole.ToString(),
                 x.Version,
                 x.MonitoringStatus.Value,
                 x.ConsentStatus.Value,
@@ -83,6 +85,56 @@ public class CasesController : ControllerBase
             .ToListAsync(cancellationToken);
 
         return Ok(rules);
+    }
+
+    [HttpPut("{id:guid}/subject-role")]
+    [Authorize(Policy = AuthorizationPolicies.RulesManage)]
+    [EnableRateLimiting(SecurityRateLimitPolicies.ApiWrites)]
+    public async Task<IActionResult> PutSubjectRole(Guid id, [FromBody] UpdateProtectedCaseSubjectRoleRequest request, CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<MonitoredSubjectRole>(request.SubjectRole, ignoreCase: true, out var subjectRole))
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                [nameof(request.SubjectRole)] = ["Invalid subject role. Use ProtectedWoman or Aggressor."]
+            })
+            {
+                Title = "Validation failed.",
+                Status = StatusCodes.Status400BadRequest,
+                Instance = HttpContext.Request.Path
+            });
+        }
+
+        var protectedCase = await _dbContext.ProtectedCases
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (protectedCase is null)
+        {
+            return NotFound();
+        }
+
+        protectedCase.Reclassify(subjectRole);
+
+        _dbContext.AuditLogs.Add(new AuditLog(
+            AuditActorType.Operator,
+            "protected_case.subject_role.updated",
+            nameof(ProtectedCase),
+            protectedCase.Id.ToString(),
+            $"case_id={protectedCase.Id};subject_role={subjectRole}"));
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(new ProtectedCaseDetailResponse(
+            protectedCase.Id,
+            protectedCase.ExternalCaseId.Value,
+            protectedCase.SubjectRole.ToString(),
+            protectedCase.Version,
+            protectedCase.MonitoringStatus.Value,
+            protectedCase.ConsentStatus.Value,
+            protectedCase.PersonProjectionId,
+            protectedCase.CreatedAt,
+            protectedCase.LastSynchronizedAt,
+            protectedCase.LastSyncStatus,
+            protectedCase.LastSyncFailureReason));
     }
 
     [HttpPut("{id:guid}/rules/{ruleId:guid}")]

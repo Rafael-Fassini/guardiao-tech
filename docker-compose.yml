@@ -137,6 +137,12 @@ services:
       EdgeWorker__WorkerId: ${WORKER_ID}
       EdgeWorker__GalleryRefreshIntervalSeconds: ${EDGE_GALLERY_REFRESH_INTERVAL_SECONDS}
       EdgeWorker__ReconnectDelayMilliseconds: ${EDGE_RECONNECT_DELAY_MS}
+      EdgeWorker__Cameras__0__CameraId: ${EDGE_CAMERA_0_ID}
+      EdgeWorker__Cameras__0__SiteId: ${EDGE_CAMERA_0_SITE_ID}
+      EdgeWorker__Cameras__0__ProtectedCaseId: ${EDGE_CAMERA_0_PROTECTED_CASE_ID}
+      EdgeWorker__Cameras__0__Name: ${EDGE_CAMERA_0_NAME}
+      EdgeWorker__Cameras__0__Source: ${EDGE_CAMERA_0_SOURCE}
+      EdgeWorker__Cameras__0__Enabled: ${EDGE_CAMERA_0_ENABLED}
       Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
     ports:
       - "${EDGE_HEALTH_PORT}:${EDGE_HEALTH_PORT}"

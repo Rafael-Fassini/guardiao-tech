@@ -1,4 +1,5 @@
 using Guardiao.Domain.Entities;
+using Guardiao.Domain.Enums;
 using Guardiao.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -40,6 +41,9 @@ public class GuardiaoDbContext : DbContext
                 .HasConversion(x => x.Value, x => new MonitoringStatus(x));
             entity.Property(x => x.ConsentStatus)
                 .HasConversion(x => x.Value, x => new ConsentStatus(x));
+            entity.Property(x => x.SubjectRole)
+                .HasConversion<string>()
+                .HasDefaultValue(MonitoredSubjectRole.ProtectedWoman);
         });
 
         modelBuilder.Entity<PersonProjection>(entity =>

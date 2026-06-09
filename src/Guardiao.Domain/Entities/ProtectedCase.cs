@@ -1,4 +1,5 @@
 using Guardiao.Domain.Exceptions;
+using Guardiao.Domain.Enums;
 using Guardiao.Domain.ValueObjects;
 
 namespace Guardiao.Domain.Entities;
@@ -15,7 +16,8 @@ public class ProtectedCase
         Guid institutionId,
         Guid personProjectionId,
         MonitoringStatus monitoringStatus,
-        ConsentStatus consentStatus)
+        ConsentStatus consentStatus,
+        MonitoredSubjectRole subjectRole = MonitoredSubjectRole.ProtectedWoman)
     {
         if (version <= 0)
         {
@@ -39,6 +41,7 @@ public class ProtectedCase
         PersonProjectionId = personProjectionId;
         MonitoringStatus = monitoringStatus;
         ConsentStatus = consentStatus;
+        SubjectRole = subjectRole;
         CreatedAt = DateTime.UtcNow;
         LastSynchronizedAt = CreatedAt;
     }
@@ -50,6 +53,7 @@ public class ProtectedCase
     public Guid PersonProjectionId { get; private set; }
     public MonitoringStatus MonitoringStatus { get; private set; }
     public ConsentStatus ConsentStatus { get; private set; }
+    public MonitoredSubjectRole SubjectRole { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime LastSynchronizedAt { get; private set; }
     public string LastSyncStatus { get; private set; } = "pending";
@@ -85,5 +89,10 @@ public class ProtectedCase
         LastSynchronizedAt = synchronizedAtUtc;
         LastSyncStatus = "failed";
         LastSyncFailureReason = string.IsNullOrWhiteSpace(failureReason) ? "unknown" : failureReason.Trim();
+    }
+
+    public void Reclassify(MonitoredSubjectRole subjectRole)
+    {
+        SubjectRole = subjectRole;
     }
 }

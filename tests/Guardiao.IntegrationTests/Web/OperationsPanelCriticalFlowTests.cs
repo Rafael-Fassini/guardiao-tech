@@ -66,6 +66,37 @@ public class OperationsPanelCriticalFlowTests
     }
 
     [Fact]
+    public async Task UpdateCaseSubjectRole_ShouldCallApiAndWriteAudit()
+    {
+        using var factory = new GuardiaoWebFactory("operator.ana", "operator");
+        var caseId = Guid.NewGuid();
+        factory.ApiHandler.Cases.Add(new ProtectedCaseState
+        {
+            Id = caseId,
+            ExternalCaseId = "case-role",
+            SubjectRole = "ProtectedWoman",
+            Version = 1,
+            MonitoringStatus = "enabled",
+            ConsentStatus = "granted",
+            PersonProjectionId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            LastSynchronizedAt = DateTime.UtcNow,
+            LastSyncStatus = "ok"
+        });
+
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<OperationsPanelService>();
+
+        await service.UpdateCaseSubjectRoleAsync(caseId, "Aggressor");
+
+        var item = factory.ApiHandler.Cases.Single(x => x.Id == caseId);
+        var auditEntry = factory.ApiHandler.AuditEntries.Single(x => x.EntityId == caseId.ToString());
+
+        Assert.Equal("Aggressor", item.SubjectRole);
+        Assert.Equal("protected_case.subject_role.updated", auditEntry.Action);
+    }
+
+    [Fact]
     public async Task ToggleCamera_ShouldCallApiAndWriteAudit()
     {
         using var factory = new GuardiaoWebFactory("operator.ana", "operator");

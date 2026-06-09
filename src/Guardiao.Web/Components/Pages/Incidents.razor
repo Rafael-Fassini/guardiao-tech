@@ -7,7 +7,15 @@
 <h1>Incidentes</h1>
 
 <section class="table-panel">
-    @if (items.Count == 0)
+    @if (isLoading)
+    {
+        <p class="panel-empty">Carregando incidentes.</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <p class="panel-empty panel-error">@loadError</p>
+    }
+    else if (items.Count == 0)
     {
         <p class="panel-empty">Nenhum incidente disponivel.</p>
     }
@@ -59,13 +67,34 @@
         border-bottom: 1px solid rgba(216,203,182,0.6);
         text-align: left;
     }
+
+    .panel-error {
+        color: #912f2f;
+    }
 </style>
 
 @code {
     private List<IncidentListItemModel> items = [];
+    private bool isLoading = true;
+    private string? loadError;
 
     protected override async Task OnInitializedAsync()
     {
-        items = await PanelService.ListIncidentsAsync();
+        isLoading = true;
+        loadError = null;
+
+        try
+        {
+            items = await PanelService.ListIncidentsAsync();
+        }
+        catch (Exception ex)
+        {
+            items = [];
+            loadError = $"Nao foi possivel carregar os incidentes: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 }

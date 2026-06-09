@@ -174,18 +174,24 @@ public class OperationsPanelIntegrationTests
     public async Task GetDashboard_ShouldRenderSummaryAndRecentItems_WhenAuthenticated()
     {
         using var factory = new GuardiaoWebFactory();
+        var cameraId = Guid.NewGuid();
+        var siteId = Guid.NewGuid();
+        var incidentId = Guid.NewGuid();
+        var evidenceId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
         factory.ApiHandler.Incidents.Add(new IncidentState
         {
-            Id = Guid.NewGuid(),
-            ProtectedCaseId = Guid.NewGuid(),
+            Id = incidentId,
+            ProtectedCaseId = caseId,
             CandidateEventId = Guid.NewGuid(),
             Status = "PendingReview",
             CreatedAtUtc = DateTime.UtcNow
         });
         factory.ApiHandler.Cases.Add(new ProtectedCaseState
         {
-            Id = Guid.NewGuid(),
+            Id = caseId,
             ExternalCaseId = "case-dashboard",
+            SubjectRole = "ProtectedWoman",
             Version = 2,
             MonitoringStatus = "enabled",
             ConsentStatus = "granted",
@@ -193,11 +199,18 @@ public class OperationsPanelIntegrationTests
             LastSynchronizedAt = DateTime.UtcNow,
             LastSyncStatus = "ok"
         });
+        factory.ApiHandler.Sites.Add(new SiteState
+        {
+            Id = siteId,
+            InstitutionId = Guid.NewGuid(),
+            Name = "Campus Central",
+            AddressLine = "Bloco A"
+        });
         factory.ApiHandler.Cameras.Add(new CameraState
         {
-            Id = Guid.NewGuid(),
-            SiteId = Guid.NewGuid(),
-            Name = "Cam 01",
+            Id = cameraId,
+            SiteId = siteId,
+            Name = "Webcam Recepcao",
             StreamEndpoint = "rtsp://camera-01",
             IsEnabled = true
         });
@@ -211,6 +224,64 @@ public class OperationsPanelIntegrationTests
             Details = "status=Confirmed",
             CreatedAtUtc = DateTime.UtcNow
         });
+        factory.ApiHandler.CameraViews.Add(new CameraOperationalViewState
+        {
+            CameraId = cameraId,
+            SiteId = siteId,
+            CameraName = "Webcam Recepcao",
+            SiteName = "Campus Central",
+            IsEnabled = true,
+            StreamEndpoint = "webcam://0",
+            LastDetectionAtUtc = DateTime.UtcNow,
+            LatestSnapshot = new EvidencePreviewState
+            {
+                IncidentId = incidentId,
+                EvidenceId = evidenceId,
+                ContentType = "image/jpeg",
+                CapturedAtUtc = DateTime.UtcNow
+            },
+            ActiveAlert = new AggressorPresenceAlertState
+            {
+                ProtectedCaseId = Guid.NewGuid(),
+                FullName = "Agressor de teste",
+                MatchScore = 0.97,
+                DetectedAtUtc = DateTime.UtcNow,
+                Snapshot = new EvidencePreviewState
+                {
+                    IncidentId = incidentId,
+                    EvidenceId = evidenceId,
+                    ContentType = "image/jpeg",
+                    CapturedAtUtc = DateTime.UtcNow
+                }
+            }
+        });
+        factory.ApiHandler.CameraViews[0].RecentProtectedWomen.Add(new DetectedSubjectState
+        {
+            ProtectedCaseId = caseId,
+            PersonProjectionId = Guid.NewGuid(),
+            FullName = "Vitima Piloto",
+            SubjectRole = "ProtectedWoman",
+            MatchScore = 0.94,
+            DetectedAtUtc = DateTime.UtcNow,
+            IncidentStatus = "PendingReview",
+            Snapshot = new EvidencePreviewState
+            {
+                IncidentId = incidentId,
+                EvidenceId = evidenceId,
+                ContentType = "image/jpeg",
+                CapturedAtUtc = DateTime.UtcNow
+            }
+        });
+        factory.ApiHandler.CameraViews[0].ActiveAlert!.NearbyProtectedWomen.Add("Vitima Piloto");
+        factory.ApiHandler.IncidentEvidences.Add(new IncidentEvidenceState
+        {
+            Id = evidenceId,
+            IncidentId = incidentId,
+            ArtifactType = "Snapshot",
+            ContentType = "image/jpeg",
+            CreatedAtUtc = DateTime.UtcNow,
+            Content = [1, 2, 3]
+        });
 
         using var client = factory.CreateClient();
         await AuthenticateAsync(client, "operator.ana", "operator");
@@ -220,8 +291,12 @@ public class OperationsPanelIntegrationTests
 
         response.EnsureSuccessStatusCode();
         Assert.Contains("Resumo operacional", html);
+        Assert.Contains("Casos monitorados", html);
+        Assert.Contains("Webcam Recepcao", html);
+        Assert.Contains("Mulheres detectadas no ambiente", html);
+        Assert.Contains("Agressor de teste", html);
         Assert.Contains("incident.review.confirmed", html);
-        Assert.Contains("PendingReview", html);
+        Assert.Contains("Em revisao", html);
     }
 
     [Fact]
@@ -345,6 +420,7 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
     public List<MonitoringRuleState> Rules { get; } = [];
     public List<SiteState> Sites { get; } = [];
     public List<CameraState> Cameras { get; } = [];
+    public List<CameraOperationalViewState> CameraViews { get; } = [];
     public List<AuditEntryState> AuditEntries { get; } = [];
     public List<BiometricTemplateState> BiometricTemplates { get; } = [];
     public List<IncidentEvidenceState> IncidentEvidences { get; } = [];
@@ -362,13 +438,30 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
 
         if (request.Method == HttpMethod.Get && path == "/api/operations/summary")
         {
+            var cameraViews = CameraViews.Count > 0
+                ? CameraViews.Select(x => x.ToModel()).ToArray()
+                : Cameras.OrderBy(x => x.Name)
+                    .Select(x => new CameraOperationalViewModel(
+                        x.Id,
+                        x.SiteId,
+                        x.Name,
+                        Sites.FirstOrDefault(site => site.Id == x.SiteId)?.Name ?? "Site nao configurado",
+                        x.IsEnabled,
+                        x.StreamEndpoint,
+                        null,
+                        null,
+                        [],
+                        null))
+                    .ToArray();
+
             return Json(new OperationsSummaryModel(
                 Incidents.Count,
                 Cases.Count,
                 Cameras.Count,
                 AuditEntries.Count,
                 Incidents.OrderByDescending(x => x.CreatedAtUtc).Take(5).Select(x => x.ToRecentModel()).ToArray(),
-                AuditEntries.OrderByDescending(x => x.CreatedAtUtc).Take(5).Select(x => x.ToModel()).ToArray()));
+                AuditEntries.OrderByDescending(x => x.CreatedAtUtc).Take(5).Select(x => x.ToModel()).ToArray(),
+                cameraViews));
         }
 
         if (request.Method == HttpMethod.Get && path == "/api/incidents")
@@ -454,6 +547,28 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
             var id = Guid.Parse(segments[2]);
             var item = Cases.FirstOrDefault(x => x.Id == id);
             return item is null ? new HttpResponseMessage(HttpStatusCode.NotFound) : Json(item.ToDetailModel());
+        }
+
+        if (request.Method == HttpMethod.Put && segments.Length == 4 && segments[0] == "api" && segments[1] == "cases" && segments[3] == "subject-role")
+        {
+            var caseId = Guid.Parse(segments[2]);
+            var body = await request.Content!.ReadFromJsonAsync<TestUpdateProtectedCaseSubjectRoleRequest>(cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException("Missing subject role request body.");
+            var item = Cases.First(x => x.Id == caseId);
+            item.SubjectRole = body.SubjectRole;
+
+            AuditEntries.Add(new AuditEntryState
+            {
+                Id = Guid.NewGuid(),
+                ActorType = "Operator",
+                Action = "protected_case.subject_role.updated",
+                EntityName = "ProtectedCase",
+                EntityId = item.Id.ToString(),
+                Details = $"subject_role={body.SubjectRole}",
+                CreatedAtUtc = DateTime.UtcNow
+            });
+
+            return Json(item.ToDetailModel());
         }
 
         if (request.Method == HttpMethod.Get && segments.Length == 4 && segments[0] == "api" && segments[1] == "cases" && segments[3] == "biometrics")
@@ -685,6 +800,7 @@ public sealed class ProtectedCaseState
 {
     public Guid Id { get; set; }
     public string ExternalCaseId { get; set; } = string.Empty;
+    public string SubjectRole { get; set; } = "ProtectedWoman";
     public long Version { get; set; }
     public string MonitoringStatus { get; set; } = string.Empty;
     public string ConsentStatus { get; set; } = string.Empty;
@@ -695,10 +811,77 @@ public sealed class ProtectedCaseState
     public string? LastSyncFailureReason { get; set; }
 
     public ProtectedCaseListItemModel ToListItemModel()
-        => new(Id, ExternalCaseId, Version, MonitoringStatus, ConsentStatus, LastSynchronizedAt, LastSyncStatus);
+        => new(Id, ExternalCaseId, SubjectRole, Version, MonitoringStatus, ConsentStatus, LastSynchronizedAt, LastSyncStatus);
 
     public ProtectedCaseDetailModel ToDetailModel()
-        => new(Id, ExternalCaseId, Version, MonitoringStatus, ConsentStatus, PersonProjectionId, CreatedAt, LastSynchronizedAt, LastSyncStatus, LastSyncFailureReason);
+        => new(Id, ExternalCaseId, SubjectRole, Version, MonitoringStatus, ConsentStatus, PersonProjectionId, CreatedAt, LastSynchronizedAt, LastSyncStatus, LastSyncFailureReason);
+}
+
+public sealed class CameraOperationalViewState
+{
+    public Guid CameraId { get; set; }
+    public Guid SiteId { get; set; }
+    public string CameraName { get; set; } = string.Empty;
+    public string SiteName { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; }
+    public string StreamEndpoint { get; set; } = string.Empty;
+    public DateTime? LastDetectionAtUtc { get; set; }
+    public EvidencePreviewState? LatestSnapshot { get; set; }
+    public List<DetectedSubjectState> RecentProtectedWomen { get; } = [];
+    public AggressorPresenceAlertState? ActiveAlert { get; set; }
+
+    public CameraOperationalViewModel ToModel()
+        => new(
+            CameraId,
+            SiteId,
+            CameraName,
+            SiteName,
+            IsEnabled,
+            StreamEndpoint,
+            LastDetectionAtUtc,
+            LatestSnapshot?.ToModel(),
+            RecentProtectedWomen.Select(x => x.ToModel()).ToArray(),
+            ActiveAlert?.ToModel());
+}
+
+public sealed class EvidencePreviewState
+{
+    public Guid IncidentId { get; set; }
+    public Guid EvidenceId { get; set; }
+    public string ContentType { get; set; } = "image/jpeg";
+    public DateTime CapturedAtUtc { get; set; }
+
+    public EvidencePreviewModel ToModel()
+        => new(IncidentId, EvidenceId, ContentType, CapturedAtUtc);
+}
+
+public sealed class DetectedSubjectState
+{
+    public Guid ProtectedCaseId { get; set; }
+    public Guid PersonProjectionId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string SubjectRole { get; set; } = "ProtectedWoman";
+    public bool IsBystander { get; set; }
+    public string IncidentStatus { get; set; } = "PendingReview";
+    public double MatchScore { get; set; }
+    public DateTime DetectedAtUtc { get; set; }
+    public EvidencePreviewState? Snapshot { get; set; }
+
+    public DetectedSubjectModel ToModel()
+        => new(ProtectedCaseId, PersonProjectionId, FullName, SubjectRole, IsBystander, IncidentStatus, MatchScore, DetectedAtUtc, Snapshot?.ToModel());
+}
+
+public sealed class AggressorPresenceAlertState
+{
+    public Guid ProtectedCaseId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public double MatchScore { get; set; }
+    public DateTime DetectedAtUtc { get; set; }
+    public List<string> NearbyProtectedWomen { get; } = [];
+    public EvidencePreviewState? Snapshot { get; set; }
+
+    public AggressorPresenceAlertModel ToModel()
+        => new(ProtectedCaseId, FullName, MatchScore, DetectedAtUtc, NearbyProtectedWomen.ToArray(), Snapshot?.ToModel());
 }
 
 public sealed class MonitoringRuleState
@@ -788,4 +971,9 @@ internal sealed class TestUpdateMonitoringRuleRequest
 internal sealed class TestUpdateCameraStateRequest
 {
     public bool IsEnabled { get; set; }
+}
+
+internal sealed class TestUpdateProtectedCaseSubjectRoleRequest
+{
+    public string SubjectRole { get; set; } = string.Empty;
 }

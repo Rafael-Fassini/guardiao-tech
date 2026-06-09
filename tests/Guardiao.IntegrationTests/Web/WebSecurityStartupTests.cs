@@ -17,6 +17,22 @@ public class WebSecurityStartupTests
         var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
         Assert.Contains("EnableOperationsDemoLogin", exception.ToString(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task GetLogin_ShouldEmitCspCompatibleWithBlazorServer()
+    {
+        using var factory = new GuardiaoWebFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/login");
+
+        response.EnsureSuccessStatusCode();
+        Assert.True(response.Headers.TryGetValues("Content-Security-Policy", out var values));
+
+        var csp = values.Single();
+        Assert.Contains("connect-src 'self' ws: wss:", csp, StringComparison.Ordinal);
+        Assert.Contains("style-src 'self' 'unsafe-inline'", csp, StringComparison.Ordinal);
+    }
 }
 
 internal sealed class InvalidWebSecurityFactory : WebApplicationFactory<WebEntryPoint>

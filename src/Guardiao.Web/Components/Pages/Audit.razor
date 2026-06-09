@@ -7,7 +7,15 @@
 <h1>Trilha de auditoria</h1>
 
 <section class="panel">
-    @if (entries.Count == 0)
+    @if (isLoading)
+    {
+        <p class="panel-empty">Carregando trilha de auditoria.</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <p class="panel-empty panel-error">@loadError</p>
+    }
+    else if (entries.Count == 0)
     {
         <p class="panel-empty">Nenhum registro disponivel.</p>
     }
@@ -50,13 +58,34 @@
         color: var(--muted);
         margin: 8px 0;
     }
+
+    .panel-error {
+        color: #912f2f;
+    }
 </style>
 
 @code {
     private List<AuditEntryModel> entries = [];
+    private bool isLoading = true;
+    private string? loadError;
 
     protected override async Task OnInitializedAsync()
     {
-        entries = await PanelService.ListAuditAsync();
+        isLoading = true;
+        loadError = null;
+
+        try
+        {
+            entries = await PanelService.ListAuditAsync();
+        }
+        catch (Exception ex)
+        {
+            entries = [];
+            loadError = $"Nao foi possivel carregar a auditoria: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 }

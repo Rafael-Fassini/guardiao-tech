@@ -12,7 +12,7 @@ RUN dotnet publish src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj -c Relea
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "Guardiao.Worker.Edge.dll"]

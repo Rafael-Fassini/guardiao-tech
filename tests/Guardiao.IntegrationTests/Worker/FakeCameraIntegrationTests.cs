@@ -1,8 +1,8 @@
 using Guardiao.Application.Ports.Outbound;
 using Guardiao.Infrastructure.System;
+using Guardiao.Worker.Edge.Adapters;
 using Guardiao.Worker.Edge.Options;
 using Guardiao.Worker.Edge.Pipeline;
-using Guardiao.Worker.Edge.Adapters;
 using Guardiao.Worker.Edge.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -33,7 +33,7 @@ public class FakeCameraIntegrationTests
             ]
         }));
         var session = new CameraPipelineSession(
-            new AdaptiveCameraCaptureAdapter(),
+            new ReplayCameraCapturePort([System.Text.Encoding.UTF8.GetBytes("frame-1")]),
             new DeterministicFaceDetectorPort(Options.Create(new EdgeWorkerOptions { MinimumDetectionScore = 0.1 })),
             new DeterministicFaceTrackerPort(),
             new DeterministicFaceEmbedderPort(),

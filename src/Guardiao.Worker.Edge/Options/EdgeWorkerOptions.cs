@@ -64,6 +64,8 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
     public ValidateOptionsResult Validate(string? name, EdgeWorkerOptions options)
     {
         var errors = new List<string>();
+        options.DetectionModelPath = ResolvePath(options.DetectionModelPath);
+        options.EmbeddingModelPath = ResolvePath(options.EmbeddingModelPath);
 
         if (options.HealthPort <= 0)
         {
@@ -266,5 +268,46 @@ public sealed class EdgeWorkerOptionsValidator : IValidateOptions<EdgeWorkerOpti
         return errors.Count > 0
             ? ValidateOptionsResult.Fail(errors)
             : ValidateOptionsResult.Success;
+    }
+
+    private static string ResolvePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return path;
+        }
+
+        var candidatePaths = EnumerateCandidateBaseDirectories()
+            .Select(baseDirectory => Path.GetFullPath(path, baseDirectory))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var candidate in candidatePaths)
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return path;
+    }
+
+    private static IEnumerable<string> EnumerateCandidateBaseDirectories()
+    {
+        var yielded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var root in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            var current = new DirectoryInfo(root);
+            while (current is not null)
+            {
+                if (yielded.Add(current.FullName))
+                {
+                    yield return current.FullName;
+                }
+
+                current = current.Parent;
+            }
+        }
     }
 }

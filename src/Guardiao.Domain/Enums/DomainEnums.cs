@@ -21,3 +21,9 @@ public enum AuditActorType
     Operator = 2,
     Integration = 3
 }
+
+public enum MonitoredSubjectRole
+{
+    ProtectedWoman = 1,
+    Aggressor = 2
+}

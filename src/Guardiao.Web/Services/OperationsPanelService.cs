@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Authorization;
 
@@ -33,8 +35,11 @@ public sealed class OperationsPanelService
 
     public async Task<string> GetIncidentEvidenceDataUrlAsync(Guid incidentId, Guid evidenceId, string contentType, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync();
-        using var response = await _httpClient.GetAsync($"/api/incidents/{incidentId}/evidences/{evidenceId}/content", cancellationToken);
+        using var request = await CreateRequestAsync(
+            HttpMethod.Get,
+            $"/api/incidents/{incidentId}/evidences/{evidenceId}/content",
+            cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var effectiveContentType = response.Content.Headers.ContentType?.MediaType ?? contentType;
@@ -64,28 +69,30 @@ public sealed class OperationsPanelService
 
     public async Task ConfirmIncidentAsync(Guid incidentId, string reviewNotes, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync();
-        using var response = await _httpClient.PostAsJsonAsync(
+        using var request = await CreateJsonRequestAsync(
+            HttpMethod.Post,
             $"/api/incidents/{incidentId}/review/confirm",
             new IncidentReviewRequest { ReviewNotes = reviewNotes },
             cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task DismissIncidentAsync(Guid incidentId, string reviewNotes, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync();
-        using var response = await _httpClient.PostAsJsonAsync(
+        using var request = await CreateJsonRequestAsync(
+            HttpMethod.Post,
             $"/api/incidents/{incidentId}/review/dismiss",
             new IncidentReviewRequest { ReviewNotes = reviewNotes },
             cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task UpdateRuleAsync(Guid protectedCaseId, Guid ruleId, Guid siteId, Guid cameraId, TimeOnly startsAt, TimeOnly endsAt, bool enabled, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync();
-        using var response = await _httpClient.PutAsJsonAsync(
+        using var request = await CreateJsonRequestAsync(
+            HttpMethod.Put,
             $"/api/cases/{protectedCaseId}/rules/{ruleId}",
             new UpdateMonitoringRuleRequest
             {
@@ -96,30 +103,46 @@ public sealed class OperationsPanelService
                 IsEnabled = enabled
             },
             cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task UpdateCaseSubjectRoleAsync(Guid protectedCaseId, string subjectRole, CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateJsonRequestAsync(
+            HttpMethod.Put,
+            $"/api/cases/{protectedCaseId}/subject-role",
+            new UpdateProtectedCaseSubjectRoleRequest { SubjectRole = subjectRole },
+            cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task ToggleCameraAsync(Guid cameraId, bool enabled, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync();
-        using var response = await _httpClient.PutAsJsonAsync(
+        using var request = await CreateJsonRequestAsync(
+            HttpMethod.Put,
             $"/api/cameras/{cameraId}/state",
             new UpdateCameraStateRequest { IsEnabled = enabled },
             cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task<BiometricTemplateUploadModel> UploadBiometricTemplateAsync(Guid protectedCaseId, IBrowserFile file, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync();
-
         using var form = new MultipartFormDataContent();
         await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024, cancellationToken);
         using var content = new StreamContent(stream);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
         form.Add(content, "file", file.Name);
 
-        using var response = await _httpClient.PostAsync($"/api/cases/{protectedCaseId}/biometrics", form, cancellationToken);
+        using var request = await CreateRequestAsync(
+            HttpMethod.Post,
+            $"/api/cases/{protectedCaseId}/biometrics",
+            cancellationToken,
+            form);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<BiometricTemplateUploadModel>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("Response payload was empty for biometric upload.");
@@ -127,15 +150,18 @@ public sealed class OperationsPanelService
 
     public async Task DeactivateBiometricTemplateAsync(Guid protectedCaseId, Guid templateId, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync();
-        using var response = await _httpClient.DeleteAsync($"/api/cases/{protectedCaseId}/biometrics/{templateId}", cancellationToken);
+        using var request = await CreateRequestAsync(
+            HttpMethod.Delete,
+            $"/api/cases/{protectedCaseId}/biometrics/{templateId}",
+            cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
     private async Task<T> GetRequiredAsync<T>(string path, CancellationToken cancellationToken)
     {
-        await EnsureAuthenticatedAsync();
-        using var response = await _httpClient.GetAsync(path, cancellationToken);
+        using var request = await CreateRequestAsync(HttpMethod.Get, path, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException($"Response payload was empty for '{path}'.");
@@ -143,8 +169,8 @@ public sealed class OperationsPanelService
 
     private async Task<T?> GetOptionalAsync<T>(string path, CancellationToken cancellationToken)
     {
-        await EnsureAuthenticatedAsync();
-        using var response = await _httpClient.GetAsync(path, cancellationToken);
+        using var request = await CreateRequestAsync(HttpMethod.Get, path, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return default;
@@ -175,5 +201,60 @@ public sealed class OperationsPanelService
         {
             throw new InvalidOperationException("The operations panel requires an authenticated user.");
         }
+    }
+
+    private async Task<HttpRequestMessage> CreateJsonRequestAsync<T>(HttpMethod method, string path, T payload, CancellationToken cancellationToken)
+    {
+        var request = await CreateRequestAsync(method, path, cancellationToken);
+        request.Content = JsonContent.Create(payload);
+        return request;
+    }
+
+    private async Task<HttpRequestMessage> CreateRequestAsync(
+        HttpMethod method,
+        string path,
+        CancellationToken cancellationToken,
+        HttpContent? content = null)
+    {
+        var state = await _authenticationStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated != true)
+        {
+            throw new InvalidOperationException("The operations panel requires an authenticated user.");
+        }
+
+        var userName = state.User.Identity.Name ?? state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var role = state.User.FindFirstValue(ClaimTypes.Role) ?? "viewer";
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            throw new InvalidOperationException("Authenticated user name is required for operations API calls.");
+        }
+
+        var request = new HttpRequestMessage(method, path)
+        {
+            Content = content
+        };
+        request.Headers.TryAddWithoutValidation("X-Panel-User", userName);
+        request.Headers.TryAddWithoutValidation("X-Panel-Role", role);
+        request.Headers.TryAddWithoutValidation("X-Panel-Auth", ResolveSharedSecret());
+        if (!request.Headers.Accept.Any(x => x.MediaType == "application/json"))
+        {
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        }
+
+        return request;
+    }
+
+    private string ResolveSharedSecret()
+    {
+        if (_httpClient.DefaultRequestHeaders.TryGetValues("X-Panel-Auth", out var values))
+        {
+            var secret = values.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(secret))
+            {
+                return secret;
+            }
+        }
+
+        throw new InvalidOperationException("Operations API shared secret is not configured on the panel HTTP client.");
     }
 }

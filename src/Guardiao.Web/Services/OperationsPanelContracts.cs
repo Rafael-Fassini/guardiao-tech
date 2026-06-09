@@ -6,7 +6,45 @@ public sealed record OperationsSummaryModel(
     int CameraCount,
     int AuditEntryCount,
     IReadOnlyCollection<RecentIncidentModel> RecentIncidents,
-    IReadOnlyCollection<AuditEntryModel> RecentAuditEntries);
+    IReadOnlyCollection<AuditEntryModel> RecentAuditEntries,
+    IReadOnlyCollection<CameraOperationalViewModel> CameraViews);
+
+public sealed record CameraOperationalViewModel(
+    Guid CameraId,
+    Guid SiteId,
+    string CameraName,
+    string SiteName,
+    bool IsEnabled,
+    string StreamEndpoint,
+    DateTime? LastDetectionAtUtc,
+    EvidencePreviewModel? LatestSnapshot,
+    IReadOnlyCollection<DetectedSubjectModel> RecentProtectedWomen,
+    AggressorPresenceAlertModel? ActiveAlert);
+
+public sealed record EvidencePreviewModel(
+    Guid IncidentId,
+    Guid EvidenceId,
+    string ContentType,
+    DateTime CapturedAtUtc);
+
+public sealed record DetectedSubjectModel(
+    Guid ProtectedCaseId,
+    Guid PersonProjectionId,
+    string FullName,
+    string SubjectRole,
+    bool IsBystander,
+    string IncidentStatus,
+    double MatchScore,
+    DateTime DetectedAtUtc,
+    EvidencePreviewModel? Snapshot);
+
+public sealed record AggressorPresenceAlertModel(
+    Guid ProtectedCaseId,
+    string FullName,
+    double MatchScore,
+    DateTime DetectedAtUtc,
+    IReadOnlyCollection<string> NearbyProtectedWomen,
+    EvidencePreviewModel? Snapshot);
 
 public sealed record RecentIncidentModel(
     Guid Id,
@@ -56,6 +94,7 @@ public sealed record IncidentEvidenceModel(
 public sealed record ProtectedCaseListItemModel(
     Guid Id,
     string ExternalCaseId,
+    string SubjectRole,
     long Version,
     string MonitoringStatus,
     string ConsentStatus,
@@ -65,6 +104,7 @@ public sealed record ProtectedCaseListItemModel(
 public sealed record ProtectedCaseDetailModel(
     Guid Id,
     string ExternalCaseId,
+    string SubjectRole,
     long Version,
     string MonitoringStatus,
     string ConsentStatus,
@@ -140,4 +180,9 @@ internal sealed class UpdateMonitoringRuleRequest
 internal sealed class UpdateCameraStateRequest
 {
     public bool IsEnabled { get; set; }
+}
+
+internal sealed class UpdateProtectedCaseSubjectRoleRequest
+{
+    public string SubjectRole { get; set; } = string.Empty;
 }

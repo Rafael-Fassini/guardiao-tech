@@ -16,6 +16,27 @@ else
 
     <section class="rule-card">
         <div class="rule-head">
+            <strong>Classificacao operacional</strong>
+            <span>@DescribeRole(selectedSubjectRole)</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(subjectRoleMessage))
+        {
+            <p class="panel-success">@subjectRoleMessage</p>
+        }
+        <div class="subject-role-row">
+            <label>
+                <span>Perfil monitorado</span>
+                <select @bind="selectedSubjectRole">
+                    <option value="ProtectedWoman">Mulher protegida</option>
+                    <option value="Aggressor">Agressor monitorado</option>
+                </select>
+            </label>
+            <button class="primary" type="button" @onclick="SaveSubjectRoleAsync">Salvar classificacao</button>
+        </div>
+    </section>
+
+    <section class="rule-card">
+        <div class="rule-head">
             <strong>Biometria cadastrada</strong>
             <span>@templates.Count item(ns)</span>
         </div>
@@ -80,11 +101,11 @@ else
                 <div class="rule-grid">
                     <div>
                         <label>Site</label>
-                        <InputText Value="@(rule.SiteId.ToString())" ValueExpression="@(() => rule.SiteId.ToString())" disabled />
+                        <input value="@rule.SiteId" disabled />
                     </div>
                     <div>
                         <label>Camera</label>
-                        <InputText Value="@(rule.CameraId.ToString())" ValueExpression="@(() => rule.CameraId.ToString())" disabled />
+                        <input value="@rule.CameraId" disabled />
                     </div>
                     <div>
                         <label>Inicio</label>
@@ -140,6 +161,28 @@ else
         background: #fffefb;
     }
 
+    .subject-role-row {
+        display: flex;
+        gap: 12px;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+
+    .subject-role-row label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        min-width: 260px;
+    }
+
+    .subject-role-row select {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: #fffefb;
+        color: var(--text);
+    }
+
     .primary {
         border: 0;
         border-radius: 999px;
@@ -184,6 +227,8 @@ else
     private IBrowserFile? selectedFile;
     private string? uploadError;
     private string? uploadSuccess;
+    private string selectedSubjectRole = "ProtectedWoman";
+    private string? subjectRoleMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -196,6 +241,8 @@ else
             return;
         }
 
+        selectedSubjectRole = item.SubjectRole;
+        subjectRoleMessage = null;
         rules = await PanelService.ListRulesAsync(Id);
         templates = await PanelService.ListBiometricTemplatesAsync(Id);
         editModels.Clear();
@@ -203,6 +250,14 @@ else
         {
             editModels[rule.Id] = new RuleEditModel(rule);
         }
+    }
+
+    private async Task SaveSubjectRoleAsync()
+    {
+        await PanelService.UpdateCaseSubjectRoleAsync(Id, selectedSubjectRole);
+        item = await PanelService.GetCaseAsync(Id);
+        selectedSubjectRole = item?.SubjectRole ?? selectedSubjectRole;
+        subjectRoleMessage = "Classificacao operacional atualizada.";
     }
 
     private async Task SaveRule(RuleEditModel model)
@@ -253,6 +308,11 @@ else
         await PanelService.DeactivateBiometricTemplateAsync(Id, templateId);
         templates = await PanelService.ListBiometricTemplatesAsync(Id);
     }
+
+    private static string DescribeRole(string subjectRole)
+        => string.Equals(subjectRole, "Aggressor", StringComparison.OrdinalIgnoreCase)
+            ? "Agressor monitorado"
+            : "Mulher protegida";
 
     private sealed class RuleEditModel
     {
