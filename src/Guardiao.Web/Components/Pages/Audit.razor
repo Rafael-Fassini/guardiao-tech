@@ -4,7 +4,14 @@
 @using Guardiao.Web.Services
 
 <PageTitle>Auditoria</PageTitle>
-<h1>Trilha de auditoria</h1>
+
+<section class="page-header">
+    <div>
+        <div class="page-kicker">Conformidade</div>
+        <h1>Trilha de auditoria</h1>
+        <p class="page-subtitle">Registro cronologico das acoes operacionais, administrativas e automatizadas relevantes para o piloto.</p>
+    </div>
+</section>
 
 <section class="panel">
     @if (isLoading)
@@ -26,7 +33,7 @@
             <article class="audit-card">
                 <div class="audit-top">
                     <strong>@entry.Action</strong>
-                    <span>@entry.CreatedAtUtc.ToLocalTime()</span>
+                    <span class="status-badge status-neutral">@entry.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
                 </div>
                 <div class="audit-meta">@entry.EntityName / @entry.EntityId</div>
                 <p>@entry.Details</p>
@@ -36,16 +43,13 @@
 </section>
 
 <style>
-    .panel {
-        display: grid;
-        gap: 12px;
-    }
-
     .audit-card {
-        background: rgba(255,250,242,0.88);
-        border: 1px solid var(--line);
-        border-radius: 22px;
+        display: grid;
+        gap: 8px;
+        border: 1px solid rgba(213,195,167,0.62);
+        border-radius: 20px;
         padding: 18px;
+        background: rgba(255,255,255,0.4);
     }
 
     .audit-top {
@@ -56,7 +60,7 @@
 
     .audit-meta {
         color: var(--muted);
-        margin: 8px 0;
+        font-size: 0.92rem;
     }
 
     .panel-error {

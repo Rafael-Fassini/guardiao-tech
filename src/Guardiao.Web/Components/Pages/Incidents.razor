@@ -4,7 +4,14 @@
 @using Guardiao.Web.Services
 
 <PageTitle>Incidentes</PageTitle>
-<h1>Incidentes</h1>
+
+<section class="page-header">
+    <div>
+        <div class="page-kicker">Operacao</div>
+        <h1>Incidentes</h1>
+        <p class="page-subtitle">Fila operacional de ocorrencias geradas pela correlacao biometrica e aguardando tratamento humano.</p>
+    </div>
+</section>
 
 <section class="table-panel">
     @if (isLoading)
@@ -21,7 +28,7 @@
     }
     else
     {
-        <table class="grid">
+        <table class="data-grid">
             <thead>
                 <tr>
                     <th>Id</th>
@@ -37,11 +44,11 @@
                 {
                     <tr>
                         <td>@incident.Id.ToString()[..8]</td>
-                        <td>@incident.Status</td>
+                        <td><span class="@GetStatusClass(incident.Status)">@DescribeIncidentStatus(incident.Status)</span></td>
                         <td>@incident.ProtectedCaseId.ToString()[..8]</td>
-                        <td>@incident.CreatedAtUtc.ToLocalTime()</td>
-                        <td>@(incident.EscalatedAtUtc?.ToLocalTime().ToString() ?? "-")</td>
-                        <td><a href="/incidents/@incident.Id">Abrir</a></td>
+                        <td>@incident.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                        <td>@(incident.EscalatedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "-")</td>
+                        <td><a class="action-link" href="/incidents/@incident.Id">Abrir</a></td>
                     </tr>
                 }
             </tbody>
@@ -50,24 +57,6 @@
 </section>
 
 <style>
-    .table-panel {
-        background: rgba(255,250,242,0.88);
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 18px;
-    }
-
-    .grid {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .grid th, .grid td {
-        padding: 12px 10px;
-        border-bottom: 1px solid rgba(216,203,182,0.6);
-        text-align: left;
-    }
-
     .panel-error {
         color: #912f2f;
     }
@@ -96,5 +85,27 @@
         {
             isLoading = false;
         }
+    }
+
+    private static string DescribeIncidentStatus(string incidentStatus)
+    {
+        return incidentStatus switch
+        {
+            "Confirmed" => "Confirmado",
+            "Dismissed" => "Descartado",
+            "Escalated" => "Escalonado",
+            _ => "Em revisao"
+        };
+    }
+
+    private static string GetStatusClass(string incidentStatus)
+    {
+        return incidentStatus switch
+        {
+            "Confirmed" => "status-badge status-ok",
+            "Dismissed" => "status-badge status-neutral",
+            "Escalated" => "status-badge status-danger",
+            _ => "status-badge status-warn"
+        };
     }
 }

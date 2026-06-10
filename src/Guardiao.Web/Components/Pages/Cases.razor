@@ -4,7 +4,14 @@
 @using Guardiao.Web.Services
 
 <PageTitle>Casos</PageTitle>
-<h1>Casos monitorados</h1>
+
+<section class="page-header">
+    <div>
+        <div class="page-kicker">Monitoramento</div>
+        <h1>Casos monitorados</h1>
+        <p class="page-subtitle">Cadastro operacional das pessoas acompanhadas pelo piloto, com classificacao, status e acesso as regras por camera.</p>
+    </div>
+</section>
 
 <section class="table-panel">
     @if (isLoading)
@@ -21,7 +28,7 @@
     }
     else
     {
-        <table class="grid">
+        <table class="data-grid">
             <thead>
                 <tr>
                     <th>Id</th>
@@ -38,10 +45,10 @@
                     <tr>
                         <td>@item.Id.ToString()[..8]</td>
                         <td>@item.ExternalCaseId</td>
-                        <td><span class="role-chip">@DescribeRole(item.SubjectRole)</span></td>
-                        <td>@item.MonitoringStatus</td>
+                        <td><span class="@GetRoleClass(item.SubjectRole)">@DescribeRole(item.SubjectRole)</span></td>
+                        <td><span class="@GetMonitoringStatusClass(item.MonitoringStatus)">@item.MonitoringStatus</span></td>
                         <td>@item.Version</td>
-                        <td><a href="/cases/@item.Id">Regras</a></td>
+                        <td><a class="action-link" href="/cases/@item.Id">Regras</a></td>
                     </tr>
                 }
             </tbody>
@@ -50,34 +57,6 @@
 </section>
 
 <style>
-    .table-panel {
-        background: rgba(255,250,242,0.88);
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 18px;
-    }
-
-    .grid {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .grid th, .grid td {
-        padding: 12px 10px;
-        border-bottom: 1px solid rgba(216,203,182,0.6);
-        text-align: left;
-    }
-
-    .role-chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(164,81,43,0.12);
-        color: var(--accent);
-        font-size: 0.9rem;
-    }
-
     .panel-error {
         color: #912f2f;
     }
@@ -112,4 +91,20 @@
         => string.Equals(subjectRole, "Aggressor", StringComparison.OrdinalIgnoreCase)
             ? "Agressor monitorado"
             : "Mulher protegida";
+
+    private static string GetRoleClass(string subjectRole)
+        => string.Equals(subjectRole, "Aggressor", StringComparison.OrdinalIgnoreCase)
+            ? "role-chip status-danger"
+            : "role-chip status-ok";
+
+    private static string GetMonitoringStatusClass(string monitoringStatus)
+    {
+        return monitoringStatus.ToLowerInvariant() switch
+        {
+            "enabled" => "status-badge status-ok",
+            "suspended" => "status-badge status-warn",
+            "revoked" => "status-badge status-danger",
+            _ => "status-badge status-neutral"
+        };
+    }
 }

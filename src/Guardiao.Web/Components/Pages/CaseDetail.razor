@@ -6,18 +6,35 @@
 
 <PageTitle>Regras do caso</PageTitle>
 
-@if (item is null)
+@if (isLoading)
+{
+    <p class="panel-empty">Carregando caso monitorado.</p>
+}
+else if (!string.IsNullOrWhiteSpace(loadError))
+{
+    <p class="panel-empty panel-error">@loadError</p>
+}
+else if (item is null)
 {
     <p class="panel-empty">Caso nao encontrado.</p>
 }
 else
 {
-    <h1>Regras do caso @item.ExternalCaseId</h1>
+    <section class="page-header">
+        <div>
+            <div class="page-kicker">Configuracao operacional</div>
+            <h1>Regras do caso @item.ExternalCaseId</h1>
+            <p class="page-subtitle">Classificacao, biometria e regras de monitoramento aplicadas ao caso protegido neste piloto.</p>
+        </div>
+        <div>
+            <span class="@GetRoleClass(selectedSubjectRole)">@DescribeRole(selectedSubjectRole)</span>
+        </div>
+    </section>
 
     <section class="rule-card">
         <div class="rule-head">
             <strong>Classificacao operacional</strong>
-            <span>@DescribeRole(selectedSubjectRole)</span>
+            <span class="@GetRoleClass(selectedSubjectRole)">@DescribeRole(selectedSubjectRole)</span>
         </div>
         @if (!string.IsNullOrWhiteSpace(subjectRoleMessage))
         {
@@ -25,13 +42,13 @@ else
         }
         <div class="subject-role-row">
             <label>
-                <span>Perfil monitorado</span>
-                <select @bind="selectedSubjectRole">
+                <span class="field-label">Perfil monitorado</span>
+                <select class="field-select" @bind="selectedSubjectRole">
                     <option value="ProtectedWoman">Mulher protegida</option>
                     <option value="Aggressor">Agressor monitorado</option>
                 </select>
             </label>
-            <button class="primary" type="button" @onclick="SaveSubjectRoleAsync">Salvar classificacao</button>
+            <button class="btn-primary" type="button" @onclick="SaveSubjectRoleAsync">Salvar classificacao</button>
         </div>
     </section>
 
@@ -50,7 +67,7 @@ else
         }
         <div class="upload-row">
             <InputFile OnChange="HandleFileSelected" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
-            <button class="primary" type="button" @onclick="UploadBiometricAsync" disabled="@(selectedFile is null)">Enviar imagem</button>
+            <button class="btn-primary" type="button" @onclick="UploadBiometricAsync" disabled="@(selectedFile is null)">Enviar imagem</button>
         </div>
         @if (templates.Count == 0)
         {
@@ -58,7 +75,7 @@ else
         }
         else
         {
-            <table class="grid">
+            <table class="data-grid">
                 <thead>
                     <tr>
                         <th>Arquivo</th>
@@ -75,11 +92,11 @@ else
                             <td>@template.DisplayName</td>
                             <td>@template.Source</td>
                             <td>@template.ContentType</td>
-                            <td>@(template.IsActive ? "Ativo" : "Inativo")</td>
+                            <td><span class="@(template.IsActive ? "status-badge status-ok" : "status-badge status-neutral")">@(template.IsActive ? "Ativo" : "Inativo")</span></td>
                             <td>
                                 @if (template.IsActive)
                                 {
-                                    <button class="ghost" type="button" @onclick="@(() => DeactivateTemplateAsync(template.Id))">Desativar</button>
+                                    <button class="btn-secondary" type="button" @onclick="@(() => DeactivateTemplateAsync(template.Id))">Desativar</button>
                                 }
                             </td>
                         </tr>
@@ -95,32 +112,32 @@ else
         <section class="rule-card">
             <div class="rule-head">
                 <strong>@rule.Id.ToString()[..8]</strong>
-                <span>@(rule.IsEnabled ? "Ativa" : "Inativa")</span>
+                <span class="@(rule.IsEnabled ? "status-badge status-ok" : "status-badge status-neutral")">@(rule.IsEnabled ? "Ativa" : "Inativa")</span>
             </div>
             <EditForm Model="@model" FormName="@model.FormName" OnValidSubmit="@(() => SaveRule(model))">
                 <div class="rule-grid">
                     <div>
-                        <label>Site</label>
-                        <input value="@rule.SiteId" disabled />
+                        <label class="field-label">Site</label>
+                        <input class="field-input" value="@rule.SiteId" disabled />
                     </div>
                     <div>
-                        <label>Camera</label>
-                        <input value="@rule.CameraId" disabled />
+                        <label class="field-label">Camera</label>
+                        <input class="field-input" value="@rule.CameraId" disabled />
                     </div>
                     <div>
-                        <label>Inicio</label>
-                        <InputText @bind-Value="model.StartsAtText" />
+                        <label class="field-label">Inicio</label>
+                        <InputText class="field-input" @bind-Value="model.StartsAtText" />
                     </div>
                     <div>
-                        <label>Fim</label>
-                        <InputText @bind-Value="model.EndsAtText" />
+                        <label class="field-label">Fim</label>
+                        <InputText class="field-input" @bind-Value="model.EndsAtText" />
                     </div>
                 </div>
-                <label class="toggle">
+                <label class="toggle field-label">
                     <InputCheckbox @bind-Value="model.Enabled" />
                     Regra habilitada
                 </label>
-                <button class="primary" type="submit">Salvar regra</button>
+                <button class="btn-primary" type="submit">Salvar regra</button>
             </EditForm>
         </section>
     }
@@ -128,11 +145,12 @@ else
 
 <style>
     .rule-card {
-        background: rgba(255,250,242,0.88);
-        border: 1px solid var(--line);
-        border-radius: 22px;
+        background: var(--panel);
+        border: 1px solid rgba(189, 168, 139, 0.68);
+        border-radius: 24px;
         padding: 18px;
         margin-bottom: 14px;
+        box-shadow: var(--shadow-soft);
     }
 
     .rule-head {
@@ -149,16 +167,8 @@ else
     }
 
     .rule-grid label, .toggle {
-        color: var(--muted);
         display: grid;
         gap: 6px;
-    }
-
-    .rule-grid input {
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 10px 12px;
-        background: #fffefb;
     }
 
     .subject-role-row {
@@ -171,33 +181,7 @@ else
     .subject-role-row label {
         display: grid;
         gap: 6px;
-        color: var(--muted);
         min-width: 260px;
-    }
-
-    .subject-role-row select {
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 10px 12px;
-        background: #fffefb;
-        color: var(--text);
-    }
-
-    .primary {
-        border: 0;
-        border-radius: 999px;
-        padding: 12px 16px;
-        background: var(--accent);
-        color: white;
-        cursor: pointer;
-    }
-
-    .ghost {
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 10px 14px;
-        background: transparent;
-        cursor: pointer;
     }
 
     .upload-row {
@@ -229,26 +213,46 @@ else
     private string? uploadSuccess;
     private string selectedSubjectRole = "ProtectedWoman";
     private string? subjectRoleMessage;
+    private bool isLoading = true;
+    private string? loadError;
 
     protected override async Task OnParametersSetAsync()
     {
-        item = await PanelService.GetCaseAsync(Id);
-        if (item is null)
+        isLoading = true;
+        loadError = null;
+
+        try
         {
+            item = await PanelService.GetCaseAsync(Id);
+            if (item is null)
+            {
+                rules = [];
+                templates = [];
+                editModels.Clear();
+                return;
+            }
+
+            selectedSubjectRole = item.SubjectRole;
+            subjectRoleMessage = null;
+            rules = await PanelService.ListRulesAsync(Id);
+            templates = await PanelService.ListBiometricTemplatesAsync(Id);
+            editModels.Clear();
+            foreach (var rule in rules)
+            {
+                editModels[rule.Id] = new RuleEditModel(rule);
+            }
+        }
+        catch (Exception ex)
+        {
+            item = null;
             rules = [];
             templates = [];
             editModels.Clear();
-            return;
+            loadError = $"Nao foi possivel carregar o caso monitorado: {ex.Message}";
         }
-
-        selectedSubjectRole = item.SubjectRole;
-        subjectRoleMessage = null;
-        rules = await PanelService.ListRulesAsync(Id);
-        templates = await PanelService.ListBiometricTemplatesAsync(Id);
-        editModels.Clear();
-        foreach (var rule in rules)
+        finally
         {
-            editModels[rule.Id] = new RuleEditModel(rule);
+            isLoading = false;
         }
     }
 
@@ -313,6 +317,11 @@ else
         => string.Equals(subjectRole, "Aggressor", StringComparison.OrdinalIgnoreCase)
             ? "Agressor monitorado"
             : "Mulher protegida";
+
+    private static string GetRoleClass(string subjectRole)
+        => string.Equals(subjectRole, "Aggressor", StringComparison.OrdinalIgnoreCase)
+            ? "role-chip status-danger"
+            : "role-chip status-ok";
 
     private sealed class RuleEditModel
     {

@@ -6,25 +6,51 @@
 
 <PageTitle>Detalhe do incidente</PageTitle>
 
-@if (incident is null)
+@if (isLoading)
+{
+    <p class="panel-empty">Carregando incidente.</p>
+}
+else if (!string.IsNullOrWhiteSpace(loadError))
+{
+    <p class="panel-empty panel-error">@loadError</p>
+}
+else if (incident is null)
 {
     <p class="panel-empty">Incidente nao encontrado.</p>
 }
 else
 {
-    <h1>Incidente @incident.Id.ToString()[..8]</h1>
-    <div class="detail-grid">
+    <section class="page-header">
+        <div>
+            <div class="page-kicker">Resposta operacional</div>
+            <h1>Incidente @incident.Id.ToString()[..8]</h1>
+            <p class="page-subtitle">Validacao humana, evidencias e historico operacional associados a uma ocorrencia biometrica.</p>
+        </div>
+        <div>
+            <span class="@GetStatusClass(incident.Status)">@DescribeIncidentStatus(incident.Status)</span>
+        </div>
+    </section>
+
+    @if (string.Equals(incident.Status, "Escalated", StringComparison.OrdinalIgnoreCase))
+    {
+        <section class="risk-banner">
+            <strong>Incidente em prioridade alta</strong>
+            <span>Este caso ja foi escalonado e exige rastreabilidade reforcada durante a tratativa.</span>
+        </section>
+    }
+
+    <div class="split-grid">
         <section class="panel">
             <h2>Estado</h2>
             <dl>
                 <dt>Status</dt>
-                <dd>@incident.Status</dd>
+                <dd><span class="@GetStatusClass(incident.Status)">@DescribeIncidentStatus(incident.Status)</span></dd>
                 <dt>Caso</dt>
                 <dd>@incident.ProtectedCaseId</dd>
                 <dt>Criado</dt>
-                <dd>@incident.CreatedAtUtc.ToLocalTime()</dd>
+                <dd>@incident.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
                 <dt>Escalonado</dt>
-                <dd>@(incident.EscalatedAtUtc?.ToLocalTime().ToString() ?? "Nao")</dd>
+                <dd>@(incident.EscalatedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nao")</dd>
                 <dt>Evidencias</dt>
                 <dd>@evidences.Count</dd>
             </dl>
@@ -32,10 +58,10 @@ else
 
         <section class="panel">
             <h2>Validacao humana</h2>
-            <textarea @bind="reviewNotes" rows="5"></textarea>
+            <textarea class="field-textarea" @bind="reviewNotes" rows="5"></textarea>
             <div class="actions">
-                <button class="primary" @onclick="Confirm">Confirmar</button>
-                <button class="danger" @onclick="Dismiss">Descartar</button>
+                <button class="btn-primary" @onclick="Confirm">Confirmar</button>
+                <button class="btn-danger" @onclick="Dismiss">Descartar</button>
             </div>
         </section>
     </div>
@@ -52,8 +78,10 @@ else
                 @foreach (var evidence in evidences)
                 {
                     <article class="evidence-card">
-                        <strong>@evidence.ArtifactType</strong>
-                        <span>@evidence.CreatedAtUtc.ToLocalTime()</span>
+                        <div class="evidence-head">
+                            <strong>@evidence.ArtifactType</strong>
+                            <span class="status-badge status-neutral">@evidence.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                        </div>
                         @if (evidenceDataUrls.TryGetValue(evidence.Id, out var dataUrl))
                         {
                             <img src="@dataUrl" alt="@evidence.ArtifactType" />
@@ -72,7 +100,7 @@ else
         }
         else
         {
-            <table class="grid">
+            <table class="data-grid">
                 <thead>
                     <tr>
                         <th>Evento</th>
@@ -89,10 +117,10 @@ else
                         <tr>
                             <td>@notification.EventType</td>
                             <td>@notification.Channel</td>
-                            <td>@notification.DeliveryStatus</td>
+                            <td><span class="@GetNotificationClass(notification.DeliveryStatus)">@notification.DeliveryStatus</span></td>
                             <td>@notification.AttemptCount</td>
                             <td>@(notification.HasEvidence ? "Sim" : "Nao")</td>
-                            <td>@notification.CreatedAtUtc.ToLocalTime()</td>
+                            <td>@notification.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</td>
                         </tr>
                         @if (!string.IsNullOrWhiteSpace(notification.Details))
                         {
@@ -108,19 +136,6 @@ else
 }
 
 <style>
-    .detail-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-    }
-
-    .panel {
-        background: rgba(255,250,242,0.88);
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 18px;
-    }
-
     dl {
         display: grid;
         grid-template-columns: 120px 1fr;
@@ -131,19 +146,11 @@ else
         color: var(--muted);
     }
 
-    textarea {
-        width: 100%;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 12px;
-        background: #fffefb;
-        resize: vertical;
-    }
-
     .actions {
         display: flex;
         gap: 10px;
         margin-top: 12px;
+        flex-wrap: wrap;
     }
 
     .evidence-panel {
@@ -159,15 +166,17 @@ else
     .evidence-card {
         display: grid;
         gap: 8px;
-        border: 1px solid var(--line);
+        border: 1px solid rgba(213,195,167,0.62);
         border-radius: 18px;
         padding: 12px;
-        background: #fffefb;
+        background: rgba(255,255,255,0.52);
     }
 
-    .evidence-card span {
-        color: var(--muted);
-        font-size: 0.9rem;
+    .evidence-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
     }
 
     .evidence-card img {
@@ -178,45 +187,10 @@ else
         background: #f3ede4;
     }
 
-    .grid {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .grid th, .grid td {
-        padding: 12px 10px;
-        border-bottom: 1px solid rgba(216,203,182,0.6);
-        text-align: left;
-        vertical-align: top;
-    }
-
     .details-row {
         color: var(--muted);
         font-size: 0.92rem;
         background: rgba(255, 254, 251, 0.72);
-    }
-
-    .primary, .danger {
-        border: 0;
-        border-radius: 999px;
-        padding: 12px 16px;
-        cursor: pointer;
-    }
-
-    .primary {
-        background: var(--ok);
-        color: white;
-    }
-
-    .danger {
-        background: #7b3128;
-        color: white;
-    }
-
-    @@media (max-width: 900px) {
-        .detail-grid {
-            grid-template-columns: 1fr;
-        }
     }
 </style>
 
@@ -228,27 +202,47 @@ else
     private List<IncidentNotificationModel> notifications = [];
     private readonly Dictionary<Guid, string> evidenceDataUrls = [];
     private string reviewNotes = string.Empty;
+    private bool isLoading = true;
+    private string? loadError;
 
     protected override async Task OnParametersSetAsync()
     {
-        incident = await PanelService.GetIncidentAsync(Id);
-        evidences = incident is null
-            ? []
-            : await PanelService.ListIncidentEvidencesAsync(Id);
-        notifications = incident is null
-            ? []
-            : await PanelService.ListIncidentNotificationsAsync(Id);
-        evidenceDataUrls.Clear();
-        foreach (var evidence in evidences)
+        isLoading = true;
+        loadError = null;
+
+        try
         {
-            try
+            incident = await PanelService.GetIncidentAsync(Id);
+            evidences = incident is null
+                ? []
+                : await PanelService.ListIncidentEvidencesAsync(Id);
+            notifications = incident is null
+                ? []
+                : await PanelService.ListIncidentNotificationsAsync(Id);
+            evidenceDataUrls.Clear();
+            foreach (var evidence in evidences)
             {
-                evidenceDataUrls[evidence.Id] = await PanelService.GetIncidentEvidenceDataUrlAsync(Id, evidence.Id, evidence.ContentType);
+                try
+                {
+                    evidenceDataUrls[evidence.Id] = await PanelService.GetIncidentEvidenceDataUrlAsync(Id, evidence.Id, evidence.ContentType);
+                }
+                catch
+                {
+                    // Keep the incident detail page usable even if one artifact cannot be loaded.
+                }
             }
-            catch
-            {
-                // Keep the incident detail page usable even if one artifact cannot be loaded.
-            }
+        }
+        catch (Exception ex)
+        {
+            incident = null;
+            evidences = [];
+            notifications = [];
+            evidenceDataUrls.Clear();
+            loadError = $"Nao foi possivel carregar o incidente: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
@@ -262,5 +256,37 @@ else
     {
         await PanelService.DismissIncidentAsync(Id, reviewNotes);
         Navigation.NavigateTo("/incidents", true);
+    }
+
+    private static string DescribeIncidentStatus(string incidentStatus)
+    {
+        return incidentStatus switch
+        {
+            "Confirmed" => "Confirmado",
+            "Dismissed" => "Descartado",
+            "Escalated" => "Escalonado",
+            _ => "Em revisao"
+        };
+    }
+
+    private static string GetStatusClass(string incidentStatus)
+    {
+        return incidentStatus switch
+        {
+            "Confirmed" => "status-badge status-ok",
+            "Dismissed" => "status-badge status-neutral",
+            "Escalated" => "status-badge status-danger",
+            _ => "status-badge status-warn"
+        };
+    }
+
+    private static string GetNotificationClass(string deliveryStatus)
+    {
+        return deliveryStatus.ToLowerInvariant() switch
+        {
+            "sent" or "delivered" or "success" => "status-badge status-ok",
+            "failed" or "error" => "status-badge status-danger",
+            _ => "status-badge status-warn"
+        };
     }
 }

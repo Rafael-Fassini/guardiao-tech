@@ -4,9 +4,16 @@
 @using Guardiao.Web.Services
 
 <PageTitle>Cameras e sites</PageTitle>
-<h1>Cameras e sites</h1>
 
-<div class="split">
+<section class="page-header">
+    <div>
+        <div class="page-kicker">Infraestrutura</div>
+        <h1>Cameras e sites</h1>
+        <p class="page-subtitle">Mapa operacional dos ambientes monitorados, com origem do stream e controle de habilitacao por camera.</p>
+    </div>
+</section>
+
+<div class="split-grid">
     <section class="panel">
         <h2>Sites</h2>
         @if (isLoading)
@@ -25,10 +32,10 @@
         {
             @foreach (var site in sites)
             {
-                <div class="row">
+                <article class="site-card">
                     <strong>@site.Name</strong>
-                    <span>@site.AddressLine</span>
-                </div>
+                    <span class="meta-text">@site.AddressLine</span>
+                </article>
             }
         }
     </section>
@@ -43,53 +50,43 @@
         {
             @foreach (var camera in cameras)
             {
-                <div class="camera-row">
+                <article class="camera-row">
                     <div>
                         <strong>@camera.Name</strong>
-                        <div class="muted">@camera.StreamEndpoint</div>
+                        <div class="meta-text">@camera.StreamEndpoint</div>
                     </div>
-                    <button class="ghost" @onclick="() => Toggle(camera)">@((camera.IsEnabled ? "Desabilitar" : "Habilitar"))</button>
-                </div>
+                    <div class="camera-actions">
+                        <span class="@(camera.IsEnabled ? "status-badge status-ok" : "status-badge status-neutral")">
+                            @(camera.IsEnabled ? "Ativa" : "Inativa")
+                        </span>
+                        <button class="btn-secondary" @onclick="() => Toggle(camera)">@((camera.IsEnabled ? "Desabilitar" : "Habilitar"))</button>
+                    </div>
+                </article>
             }
         }
     </section>
 </div>
 
 <style>
-    .split {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-    }
-
-    .panel {
-        background: rgba(255,250,242,0.88);
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 18px;
-    }
-
-    .row, .camera-row {
+    .site-card,
+    .camera-row {
         display: flex;
         justify-content: space-between;
-        gap: 12px;
-        padding: 12px 0;
-        border-top: 1px solid rgba(216,203,182,0.6);
-    }
-
-    .muted {
-        color: var(--muted);
-        font-size: 0.92rem;
+        gap: 14px;
+        padding: 16px 0;
+        border-top: 1px solid rgba(213,195,167,0.58);
+        align-items: center;
     }
 
     .panel-error {
         color: #912f2f;
     }
 
-    @@media (max-width: 900px) {
-        .split {
-            grid-template-columns: 1fr;
-        }
+    .camera-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 </style>
 

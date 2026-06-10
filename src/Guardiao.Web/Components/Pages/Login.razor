@@ -6,28 +6,32 @@
 
 <div class="login-shell">
     <section class="login-card">
-        <p class="eyebrow">Guardiao.Web</p>
+        <div class="page-kicker">Guardiao Ops</div>
         <h1>Centro de operacoes</h1>
-        <p class="lead">Entre com um perfil operacional para revisar incidentes, administrar regras e acompanhar auditoria.</p>
+        <p class="lead">Acesso ao painel operacional do piloto com resumo visual, tratamento de incidentes, regras e auditoria.</p>
+        <div class="login-banner">
+            <strong>Modo de piloto controlado</strong>
+            <span>Use um perfil operacional para navegar por incidentes, casos monitorados e ambientes observados.</span>
+        </div>
 
         @if (!SecurityOptions.Value.EnableOperationsDemoLogin)
         {
-            <p class="lead">O login local desta interface foi desabilitado por configuracao.</p>
+            <p class="lead panel-error">O login local desta interface foi desabilitado por configuracao.</p>
         }
         <form method="post" action="/operations/login">
             <div class="field">
-                <label for="userName">Usuario</label>
-                <input id="userName" name="userName" value="@model.UserName" />
+                <label class="field-label" for="userName">Usuario</label>
+                <input class="field-input" id="userName" name="userName" value="@model.UserName" />
             </div>
             <div class="field">
-                <label for="role">Perfil</label>
-                <select id="role" name="role">
+                <label class="field-label" for="role">Perfil</label>
+                <select class="field-select" id="role" name="role">
                     <option value="operator" selected="@(model.Role == "operator")">Operator</option>
                     <option value="admin" selected="@(model.Role == "admin")">Admin</option>
                     <option value="auditor" selected="@(model.Role == "auditor")">Auditor</option>
                 </select>
             </div>
-            <button class="submit" type="submit" disabled="@(!SecurityOptions.Value.EnableOperationsDemoLogin)">Iniciar sessao</button>
+            <button class="btn-primary submit" type="submit" disabled="@(!SecurityOptions.Value.EnableOperationsDemoLogin)">Iniciar sessao</button>
         </form>
     </section>
 </div>
@@ -41,24 +45,30 @@
     }
 
     .login-card {
-        width: min(480px, 100%);
-        background: rgba(255,250,242,0.95);
-        border: 1px solid rgba(216,203,182,0.9);
-        border-radius: 28px;
-        padding: 32px;
-        box-shadow: 0 24px 60px rgba(77, 48, 26, 0.14);
-    }
-
-    .eyebrow {
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        color: var(--accent);
-        font-size: 0.72rem;
+        width: min(560px, 100%);
+        background:
+            linear-gradient(180deg, rgba(255,250,242,0.96), rgba(251,244,234,0.94)),
+            linear-gradient(135deg, rgba(155,79,45,0.08), transparent);
+        border: 1px solid rgba(213,195,167,0.9);
+        border-radius: 32px;
+        padding: 34px;
+        box-shadow: var(--shadow);
     }
 
     .lead {
         color: var(--muted);
         line-height: 1.5;
+    }
+
+    .login-banner {
+        display: grid;
+        gap: 6px;
+        margin: 18px 0 22px;
+        padding: 16px 18px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(24,35,29,0.94), rgba(55,80,67,0.92));
+        color: #f5ecde;
+        box-shadow: var(--shadow-soft);
     }
 
     .field {
@@ -67,22 +77,9 @@
         margin: 16px 0;
     }
 
-    .field input, .field select {
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 12px 14px;
-        background: #fffefb;
-    }
-
     .submit {
         width: 100%;
-        border: 0;
-        border-radius: 999px;
-        padding: 13px 16px;
-        background: var(--accent);
-        color: #fff8ef;
-        font-weight: 700;
-        cursor: pointer;
+        margin-top: 8px;
     }
 </style>
 
