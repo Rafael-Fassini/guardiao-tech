@@ -1,5 +1,6 @@
 using Guardiao.Application.Ports.Outbound;
 using Guardiao.Domain.Entities;
+using Guardiao.Domain.ValueObjects;
 using Guardiao.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,6 +32,26 @@ public sealed class IncidentRepository : IIncidentRepository
                         x.Status != Guardiao.Domain.Enums.IncidentStatus.Dismissed &&
                         x.Status != Guardiao.Domain.Enums.IncidentStatus.Escalated)
             .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public Task<Incident?> FindLatestActiveByCaseAndCameraScopeAsync(
+        Guid protectedCaseId,
+        CameraScope cameraScope,
+        DateTime createdAfterUtc,
+        CancellationToken cancellationToken = default)
+    {
+        return (
+            from incident in _context.Incidents
+            join candidateEvent in _context.BiometricCandidateEvents on incident.CandidateEventId equals candidateEvent.Id
+            where incident.ProtectedCaseId == protectedCaseId &&
+                  incident.Status != Guardiao.Domain.Enums.IncidentStatus.Dismissed &&
+                  incident.Status != Guardiao.Domain.Enums.IncidentStatus.Escalated &&
+                  incident.CreatedAtUtc >= createdAfterUtc &&
+                  candidateEvent.CameraScope.SiteId == cameraScope.SiteId &&
+                  candidateEvent.CameraScope.CameraId == cameraScope.CameraId
+            orderby incident.CreatedAtUtc descending
+            select incident)
             .FirstOrDefaultAsync(cancellationToken);
     }
 

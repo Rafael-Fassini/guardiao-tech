@@ -1,5 +1,6 @@
 using Guardiao.Application.Services;
 using Guardiao.Domain.Entities;
+using Guardiao.Domain.Enums;
 using Guardiao.Domain.ValueObjects;
 using Guardiao.Infrastructure.Caching;
 using Guardiao.Infrastructure.Options;
@@ -15,70 +16,173 @@ namespace Guardiao.IntegrationTests.Application;
 public class CandidateToIncidentIntegrationTests
 {
     [Fact]
-    public async Task ConsumeAsync_ShouldCreateIncidentAndDecisionTrail_EndToEnd()
+    public async Task ConsumeAsync_ShouldCreateIncidentOnlyAfterCoPresenceMatch_EndToEnd()
     {
         await using var db = CreateDbContext();
-        var protectedCase = new ProtectedCase(
-            new ExternalCaseId("case-e2e"),
+        var institutionId = Guid.NewGuid();
+        var siteId = Guid.NewGuid();
+        var cameraId = Guid.NewGuid();
+
+        var protectedWoman = new ProtectedCase(
+            new ExternalCaseId("case-victim-e2e"),
             1,
-            Guid.NewGuid(),
+            institutionId,
             Guid.NewGuid(),
             MonitoringStatus.Enabled,
-            ConsentStatus.Granted);
+            ConsentStatus.Granted,
+            MonitoredSubjectRole.ProtectedWoman);
+        var aggressor = new ProtectedCase(
+            new ExternalCaseId("case-aggressor-e2e"),
+            1,
+            institutionId,
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted,
+            MonitoredSubjectRole.Aggressor);
 
-        db.ProtectedCases.Add(protectedCase);
-        db.MonitoringRules.Add(new MonitoringRule(
-            protectedCase.Id,
-            new CameraScope(Guid.NewGuid(), Guid.NewGuid()),
-            new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)),
-            true));
+        db.ProtectedCases.AddRange(protectedWoman, aggressor);
+        db.MonitoringRules.AddRange(
+            new MonitoringRule(
+                protectedWoman.Id,
+                new CameraScope(siteId, cameraId),
+                new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)),
+                true),
+            new MonitoringRule(
+                aggressor.Id,
+                new CameraScope(siteId, cameraId),
+                new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)),
+                true));
         await db.SaveChangesAsync();
 
-        var rule = await db.MonitoringRules.SingleAsync();
-        var candidate = new BiometricCandidateEvent(
-            protectedCase.Id,
-            rule.CameraScope,
-            new MatchScore(0.91),
-            DateTime.UtcNow);
-
         var service = CreateService(db);
-        var result = await service.ConsumeAsync(candidate);
 
-        Assert.NotNull(result.Incident);
-        Assert.True(result.Decision.CreatesIncident);
+        var firstEvent = new BiometricCandidateEvent(
+            protectedWoman.Id,
+            new CameraScope(siteId, cameraId),
+            new MatchScore(0.91),
+            DateTime.UtcNow.AddSeconds(-45));
+        var firstResult = await service.ConsumeAsync(firstEvent);
+
+        Assert.False(firstResult.Decision.CreatesIncident);
+        Assert.Equal("CO_PRESENCE_NOT_FOUND", firstResult.Decision.ReasonCode.Value);
+        Assert.Equal(0, await db.Incidents.CountAsync());
+
+        var secondEvent = new BiometricCandidateEvent(
+            aggressor.Id,
+            new CameraScope(siteId, cameraId),
+            new MatchScore(0.94),
+            DateTime.UtcNow);
+        var secondResult = await service.ConsumeAsync(secondEvent);
+
+        Assert.NotNull(secondResult.Incident);
+        Assert.True(secondResult.Decision.CreatesIncident);
+        Assert.Equal("CO_PRESENCE_MATCH", secondResult.Decision.ReasonCode.Value);
+        Assert.Equal(protectedWoman.Id, secondResult.Incident!.ProtectedCaseId);
         Assert.Equal(1, await db.Incidents.CountAsync());
-        Assert.Equal(1, await db.CorrelationDecisions.CountAsync());
+        Assert.Equal(2, await db.CorrelationDecisions.CountAsync());
     }
 
     [Fact]
-    public async Task ConsumeAsync_ShouldSuppressWithinCooldown()
+    public async Task ConsumeAsync_ShouldNotCreateIncident_WhenCounterpartIsOutsideWindow()
     {
         await using var db = CreateDbContext();
-        var protectedCase = new ProtectedCase(
-            new ExternalCaseId("case-cooldown"),
+        var institutionId = Guid.NewGuid();
+        var scope = new CameraScope(Guid.NewGuid(), Guid.NewGuid());
+
+        var protectedWoman = new ProtectedCase(
+            new ExternalCaseId("case-victim-window"),
             1,
-            Guid.NewGuid(),
+            institutionId,
             Guid.NewGuid(),
             MonitoringStatus.Enabled,
-            ConsentStatus.Granted);
+            ConsentStatus.Granted,
+            MonitoredSubjectRole.ProtectedWoman);
+        var aggressor = new ProtectedCase(
+            new ExternalCaseId("case-aggressor-window"),
+            1,
+            institutionId,
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted,
+            MonitoredSubjectRole.Aggressor);
 
-        var scope = new CameraScope(Guid.NewGuid(), Guid.NewGuid());
-        db.ProtectedCases.Add(protectedCase);
-        db.MonitoringRules.Add(new MonitoringRule(
-            protectedCase.Id,
-            scope,
-            new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)),
-            true));
-        db.Incidents.Add(new Incident(protectedCase.Id, Guid.NewGuid()));
+        db.ProtectedCases.AddRange(protectedWoman, aggressor);
+        db.MonitoringRules.AddRange(
+            new MonitoringRule(protectedWoman.Id, scope, new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)), true),
+            new MonitoringRule(aggressor.Id, scope, new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)), true));
         await db.SaveChangesAsync();
 
-        var candidate = new BiometricCandidateEvent(protectedCase.Id, scope, new MatchScore(0.95), DateTime.UtcNow);
-
         var service = CreateService(db);
-        var result = await service.ConsumeAsync(candidate);
+        await service.ConsumeAsync(new BiometricCandidateEvent(
+            protectedWoman.Id,
+            scope,
+            new MatchScore(0.90),
+            DateTime.UtcNow.AddMinutes(-10)));
+
+        var result = await service.ConsumeAsync(new BiometricCandidateEvent(
+            aggressor.Id,
+            scope,
+            new MatchScore(0.95),
+            DateTime.UtcNow));
 
         Assert.False(result.Decision.CreatesIncident);
-        Assert.Equal("COOLDOWN_ACTIVE", result.Decision.ReasonCode.Value);
+        Assert.Equal("CO_PRESENCE_NOT_FOUND", result.Decision.ReasonCode.Value);
+        Assert.Equal(0, await db.Incidents.CountAsync());
+    }
+
+    [Fact]
+    public async Task ConsumeAsync_ShouldSuppressDuplicateIncident_WhenEncounterIsAlreadyOpen()
+    {
+        await using var db = CreateDbContext();
+        var institutionId = Guid.NewGuid();
+        var scope = new CameraScope(Guid.NewGuid(), Guid.NewGuid());
+
+        var protectedWoman = new ProtectedCase(
+            new ExternalCaseId("case-victim-cooldown"),
+            1,
+            institutionId,
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted,
+            MonitoredSubjectRole.ProtectedWoman);
+        var aggressor = new ProtectedCase(
+            new ExternalCaseId("case-aggressor-cooldown"),
+            1,
+            institutionId,
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted,
+            MonitoredSubjectRole.Aggressor);
+
+        db.ProtectedCases.AddRange(protectedWoman, aggressor);
+        db.MonitoringRules.AddRange(
+            new MonitoringRule(protectedWoman.Id, scope, new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)), true),
+            new MonitoringRule(aggressor.Id, scope, new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)), true));
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        await service.ConsumeAsync(new BiometricCandidateEvent(
+            protectedWoman.Id,
+            scope,
+            new MatchScore(0.90),
+            DateTime.UtcNow.AddSeconds(-30)));
+
+        var firstAggressorResult = await service.ConsumeAsync(new BiometricCandidateEvent(
+            aggressor.Id,
+            scope,
+            new MatchScore(0.95),
+            DateTime.UtcNow.AddSeconds(-10)));
+
+        Assert.True(firstAggressorResult.Decision.CreatesIncident);
+
+        var duplicateAggressorResult = await service.ConsumeAsync(new BiometricCandidateEvent(
+            aggressor.Id,
+            scope,
+            new MatchScore(0.96),
+            DateTime.UtcNow));
+
+        Assert.False(duplicateAggressorResult.Decision.CreatesIncident);
+        Assert.Equal("ENCOUNTER_ALREADY_OPEN", duplicateAggressorResult.Decision.ReasonCode.Value);
         Assert.Equal(1, await db.Incidents.CountAsync());
     }
 
@@ -95,7 +199,7 @@ public class CandidateToIncidentIntegrationTests
             new SystemClock(),
             new CorrelationEngineOptions
             {
-                CooldownWindow = TimeSpan.FromMinutes(5),
+                CoPresenceWindow = TimeSpan.FromMinutes(5),
                 DuplicateSuppressionWindow = TimeSpan.FromSeconds(30)
             });
     }

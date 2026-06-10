@@ -99,7 +99,8 @@ public class PerformanceBudgetTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             MonitoringStatus.Enabled,
-            ConsentStatus.Granted);
+            ConsentStatus.Granted,
+            MonitoredSubjectRole.ProtectedWoman);
         var rule = new MonitoringRule(
             protectedCase.Id,
             new CameraScope(Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd")),
@@ -117,9 +118,19 @@ public class PerformanceBudgetTests
         var candidateRepo = new Mock<ICandidateEventRepository>();
         candidateRepo.Setup(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((BiometricCandidateEvent?)null);
+        candidateRepo.Setup(x => x.ListRecentByCameraScopeAsync(
+                It.IsAny<CameraScope>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<BiometricCandidateEvent>());
         var decisionRepo = new Mock<ICorrelationDecisionRepository>();
         var incidentRepo = new Mock<IIncidentRepository>();
-        incidentRepo.Setup(x => x.FindLatestActiveByCaseAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        incidentRepo.Setup(x => x.FindLatestActiveByCaseAndCameraScopeAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<CameraScope>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync((Incident?)null);
 
         var audit = new Mock<IAuditLogRepository>();
@@ -138,7 +149,7 @@ public class PerformanceBudgetTests
             new SystemClock(),
             new CorrelationEngineOptions
             {
-                CooldownWindow = TimeSpan.FromMinutes(5),
+                CoPresenceWindow = TimeSpan.FromMinutes(5),
                 DuplicateSuppressionWindow = TimeSpan.FromSeconds(30)
             });
     }

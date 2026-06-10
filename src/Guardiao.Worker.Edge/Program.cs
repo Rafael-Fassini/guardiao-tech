@@ -20,6 +20,7 @@ builder.Services.AddSingleton<BoundedCameraFrameQueue>();
 builder.Services.AddSingleton<FrameSamplerFactory>();
 builder.Services.AddSingleton<EdgeMetricsCollector>();
 builder.Services.AddSingleton<WorkerOperationalState>();
+builder.Services.AddSingleton<LatestCameraFrameStore>();
 builder.Services.AddSingleton<IMetricsPort>(sp => sp.GetRequiredService<EdgeMetricsCollector>());
 builder.Services.AddSingleton(sp =>
 {

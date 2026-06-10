@@ -12,9 +12,20 @@ RUN dotnet publish src/Guardiao.Api/Guardiao.Api.csproj -c Release -o /app/publi
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ffmpeg \
+        libfontconfig1 \
+        libglib2.0-0 \
+        libgl1 \
+        libgomp1 \
+        libsm6 \
+        libx11-6 \
+        libxext6 \
+        libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
+ENV LD_LIBRARY_PATH=/app/runtimes/linux-x64/native:${LD_LIBRARY_PATH}
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "Guardiao.Api.dll"]

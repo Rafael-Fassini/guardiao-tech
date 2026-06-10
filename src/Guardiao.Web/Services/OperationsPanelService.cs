@@ -46,6 +46,34 @@ public sealed class OperationsPanelService
         return $"data:{effectiveContentType};base64,{Convert.ToBase64String(bytes)}";
     }
 
+    public async Task<CameraLivePreviewModel?> GetCameraLivePreviewAsync(Guid cameraId, CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateRequestAsync(
+            HttpMethod.Get,
+            $"/api/operations/cameras/{cameraId}/preview",
+            cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+        DateTime? capturedAtUtc = null;
+
+        if (response.Headers.TryGetValues("X-Captured-At-Utc", out var values) &&
+            DateTime.TryParse(values.FirstOrDefault(), null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed))
+        {
+            capturedAtUtc = parsed;
+        }
+
+        return new CameraLivePreviewModel(
+            $"data:{contentType};base64,{Convert.ToBase64String(bytes)}",
+            capturedAtUtc);
+    }
+
     public async Task<List<ProtectedCaseListItemModel>> ListCasesAsync(CancellationToken cancellationToken = default)
         => await GetRequiredAsync<List<ProtectedCaseListItemModel>>("/api/cases", cancellationToken);
 

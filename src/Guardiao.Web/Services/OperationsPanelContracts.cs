@@ -27,6 +27,10 @@ public sealed record EvidencePreviewModel(
     string ContentType,
     DateTime CapturedAtUtc);
 
+public sealed record CameraLivePreviewModel(
+    string DataUrl,
+    DateTime? CapturedAtUtc);
+
 public sealed record DetectedSubjectModel(
     Guid ProtectedCaseId,
     Guid PersonProjectionId,

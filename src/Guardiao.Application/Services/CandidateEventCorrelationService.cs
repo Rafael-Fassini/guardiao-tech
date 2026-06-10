@@ -2,6 +2,7 @@ using Guardiao.Application.Ports.Outbound;
 using Guardiao.Domain.Entities;
 using Guardiao.Domain.Enums;
 using Guardiao.Domain.ValueObjects;
+using System.Collections.Concurrent;
 
 namespace Guardiao.Application.Services;
 
@@ -100,15 +101,42 @@ public sealed class CandidateEventCorrelationService
             _options.DuplicateSuppressionWindow,
             cancellationToken);
 
-        var activeIncident = await _incidentRepository.FindLatestActiveByCaseAsync(protectedCase.Id, cancellationToken);
-        if (activeIncident is not null &&
-            _clock.UtcNow - activeIncident.CreatedAtUtc <= _options.CooldownWindow)
+        var counterpartMatch = await FindCounterpartMatchAsync(protectedCase, candidateEvent, cancellationToken);
+        if (counterpartMatch is null)
         {
-            var cooldownDecision = await PersistDecisionAsync(candidateEvent, false, "COOLDOWN_ACTIVE", cancellationToken);
-            return new CorrelationResult(cooldownDecision, activeIncident);
+            var decision = await PersistDecisionAsync(candidateEvent, false, "CO_PRESENCE_NOT_FOUND", cancellationToken);
+            return new CorrelationResult(decision, null);
         }
 
-        var incident = new Incident(protectedCase.Id, candidateEvent.Id);
+        var protectedWomanCaseId = ResolveProtectedWomanCaseId(protectedCase, counterpartMatch.ProtectedCase);
+        var aggressorCaseId = ResolveAggressorCaseId(protectedCase, counterpartMatch.ProtectedCase);
+        var activeIncidentCutoffUtc = _clock.UtcNow - _options.CoPresenceWindow;
+        var activeIncident = await _incidentRepository.FindLatestActiveByCaseAndCameraScopeAsync(
+            protectedWomanCaseId,
+            candidateEvent.CameraScope,
+            activeIncidentCutoffUtc,
+            cancellationToken);
+        if (activeIncident is not null)
+        {
+            var decision = await PersistDecisionAsync(candidateEvent, false, "ENCOUNTER_ALREADY_OPEN", cancellationToken);
+            return new CorrelationResult(decision, activeIncident);
+        }
+
+        var encounterKey = BuildEncounterKey(protectedWomanCaseId, aggressorCaseId, candidateEvent.CameraScope);
+        var existingEncounter = await _shortLivedStatePort.GetAsync(encounterKey, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(existingEncounter))
+        {
+            var decision = await PersistDecisionAsync(candidateEvent, false, "ENCOUNTER_SUPPRESSED", cancellationToken);
+            return new CorrelationResult(decision, null);
+        }
+
+        await _shortLivedStatePort.SetAsync(
+            encounterKey,
+            candidateEvent.Id.ToString(),
+            _options.CoPresenceWindow,
+            cancellationToken);
+
+        var incident = new Incident(protectedWomanCaseId, candidateEvent.Id);
         await _incidentRepository.AddAsync(incident, cancellationToken);
         await _auditLogRepository.AddAsync(
             new AuditLog(
@@ -116,11 +144,119 @@ public sealed class CandidateEventCorrelationService
                 "incident.created",
                 nameof(Incident),
                 incident.Id.ToString(),
-                $"candidate_event_id={candidateEvent.Id};case_id={protectedCase.Id}"),
+                $"candidate_event_id={candidateEvent.Id};protected_woman_case_id={protectedWomanCaseId};aggressor_case_id={aggressorCaseId};camera_id={candidateEvent.CameraScope.CameraId}"),
             cancellationToken);
 
-        var createDecision = await PersistDecisionAsync(candidateEvent, true, "RULE_MATCH", cancellationToken);
+        var createDecision = await PersistDecisionAsync(candidateEvent, true, "CO_PRESENCE_MATCH", cancellationToken);
         return new CorrelationResult(createDecision, incident);
+    }
+
+    private async Task<CounterpartMatch?> FindCounterpartMatchAsync(
+        ProtectedCase currentCase,
+        BiometricCandidateEvent candidateEvent,
+        CancellationToken cancellationToken)
+    {
+        var counterpartRole = ResolveCounterpartRole(currentCase.SubjectRole);
+        var occurredFromUtc = candidateEvent.OccurredAtUtc - _options.CoPresenceWindow;
+        var recentEvents = await _candidateEventRepository.ListRecentByCameraScopeAsync(
+            candidateEvent.CameraScope,
+            occurredFromUtc,
+            candidateEvent.OccurredAtUtc,
+            cancellationToken);
+
+        var caseCache = new ConcurrentDictionary<Guid, ProtectedCase?>();
+        var ruleCache = new ConcurrentDictionary<Guid, IReadOnlyCollection<MonitoringRule>>();
+
+        foreach (var recentEvent in recentEvents
+                     .Where(x => x.Id != candidateEvent.Id && x.ProtectedCaseId != candidateEvent.ProtectedCaseId)
+                     .OrderByDescending(x => x.MatchScore.Value)
+                     .ThenByDescending(x => x.OccurredAtUtc))
+        {
+            var recentCase = await GetCaseAsync(recentEvent.ProtectedCaseId, caseCache, cancellationToken);
+            if (recentCase is null ||
+                recentCase.SubjectRole != counterpartRole ||
+                !recentCase.MonitoringStatus.IsEnabled)
+            {
+                continue;
+            }
+
+            if (_options.RequireSameSiteForCoPresence &&
+                recentEvent.CameraScope.SiteId != candidateEvent.CameraScope.SiteId)
+            {
+                continue;
+            }
+
+            var rules = await GetRulesAsync(recentCase.Id, ruleCache, cancellationToken);
+            var recentEventTime = TimeOnly.FromDateTime(recentEvent.OccurredAtUtc);
+            var ruleMatches = rules.Any(rule => rule.AppliesTo(recentEvent.CameraScope, recentEventTime));
+            if (!ruleMatches)
+            {
+                continue;
+            }
+
+            return new CounterpartMatch(recentCase, recentEvent);
+        }
+
+        return null;
+    }
+
+    private async Task<ProtectedCase?> GetCaseAsync(
+        Guid protectedCaseId,
+        ConcurrentDictionary<Guid, ProtectedCase?> cache,
+        CancellationToken cancellationToken)
+    {
+        if (cache.TryGetValue(protectedCaseId, out var cached))
+        {
+            return cached;
+        }
+
+        var value = await _caseProjectionRepository.GetByIdAsync(protectedCaseId, cancellationToken);
+        cache[protectedCaseId] = value;
+        return value;
+    }
+
+    private async Task<IReadOnlyCollection<MonitoringRule>> GetRulesAsync(
+        Guid protectedCaseId,
+        ConcurrentDictionary<Guid, IReadOnlyCollection<MonitoringRule>> cache,
+        CancellationToken cancellationToken)
+    {
+        if (cache.TryGetValue(protectedCaseId, out var cached))
+        {
+            return cached;
+        }
+
+        var value = await _monitoringRuleRepository.ListByCaseAsync(protectedCaseId, cancellationToken);
+        cache[protectedCaseId] = value;
+        return value;
+    }
+
+    private static MonitoredSubjectRole ResolveCounterpartRole(MonitoredSubjectRole subjectRole)
+    {
+        return subjectRole switch
+        {
+            MonitoredSubjectRole.ProtectedWoman => MonitoredSubjectRole.Aggressor,
+            MonitoredSubjectRole.Aggressor => MonitoredSubjectRole.ProtectedWoman,
+            _ => throw new InvalidOperationException($"Unsupported subject role '{subjectRole}'.")
+        };
+    }
+
+    private static Guid ResolveProtectedWomanCaseId(ProtectedCase currentCase, ProtectedCase counterpartCase)
+    {
+        return currentCase.SubjectRole == MonitoredSubjectRole.ProtectedWoman
+            ? currentCase.Id
+            : counterpartCase.Id;
+    }
+
+    private static Guid ResolveAggressorCaseId(ProtectedCase currentCase, ProtectedCase counterpartCase)
+    {
+        return currentCase.SubjectRole == MonitoredSubjectRole.Aggressor
+            ? currentCase.Id
+            : counterpartCase.Id;
+    }
+
+    private static string BuildEncounterKey(Guid protectedWomanCaseId, Guid aggressorCaseId, CameraScope cameraScope)
+    {
+        return $"encounter:{protectedWomanCaseId}:{aggressorCaseId}:{cameraScope.SiteId}:{cameraScope.CameraId}";
     }
 
     private async Task<CorrelationDecision> PersistDecisionAsync(BiometricCandidateEvent candidateEvent, bool createsIncident, string reasonCode, CancellationToken cancellationToken)
@@ -137,3 +273,4 @@ public sealed class CandidateEventCorrelationService
 }
 
 public sealed record CorrelationResult(CorrelationDecision Decision, Incident? Incident, bool WasDuplicate = false);
+internal sealed record CounterpartMatch(ProtectedCase ProtectedCase, BiometricCandidateEvent CandidateEvent);

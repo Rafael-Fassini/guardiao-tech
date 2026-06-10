@@ -86,11 +86,16 @@ public sealed class AdaptiveCameraCaptureAdapter : ICameraCapturePort, IDisposab
     private sealed class VideoCaptureSession : IDisposable
     {
         private static readonly TimeSpan FfmpegCaptureCacheWindow = TimeSpan.FromMilliseconds(250);
+        private const int FfmpegWebcamWarmupFrames = 8;
         private readonly CaptureSourceDescriptor _source;
         private readonly ILogger _logger;
         private readonly SemaphoreSlim _mutex = new(1, 1);
         private VideoCapture? _capture;
         private bool _preferFfmpeg;
+        private Process? _ffmpegProcess;
+        private Stream? _ffmpegStdout;
+        private Task<string>? _ffmpegStderrTask;
+        private byte[] _ffmpegPendingBytes = [];
         private byte[]? _cachedFfmpegFrame;
         private DateTime _cachedFfmpegFrameCapturedAtUtc;
 
@@ -157,6 +162,7 @@ public sealed class AdaptiveCameraCaptureAdapter : ICameraCapturePort, IDisposab
 
         public void Dispose()
         {
+            DisposeFfmpegProcess();
             _capture?.Dispose();
             _mutex.Dispose();
         }
@@ -169,33 +175,26 @@ public sealed class AdaptiveCameraCaptureAdapter : ICameraCapturePort, IDisposab
                 return new MemoryStream(_cachedFfmpegFrame, writable: false);
             }
 
-            using var process = StartFfmpegProcess();
-            process.Start();
-
-            using var stdout = new MemoryStream();
-            var stdoutTask = process.StandardOutput.BaseStream.CopyToAsync(stdout, cancellationToken);
-            var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-            var waitTask = process.WaitForExitAsync(cancellationToken);
-
-            await Task.WhenAll(stdoutTask, stderrTask, waitTask);
-
-            var frameBytes = stdout.ToArray();
-            var stderr = await stderrTask;
-
-            if (process.ExitCode != 0)
-            {
-                throw new InvalidOperationException(
-                    $"ffmpeg failed to capture a frame from '{_source.DisplayValue}' (exit code {process.ExitCode}). {stderr}".Trim());
-            }
-
-            if (frameBytes.Length == 0)
-            {
-                throw new InvalidOperationException($"ffmpeg returned an empty frame for '{_source.DisplayValue}'. {stderr}".Trim());
-            }
+            var frameBytes = await CaptureWithPersistentFfmpegAsync(cancellationToken);
 
             _cachedFfmpegFrame = frameBytes;
             _cachedFfmpegFrameCapturedAtUtc = now;
             return new MemoryStream(frameBytes, writable: false);
+        }
+
+        private async Task<byte[]> CaptureWithPersistentFfmpegAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await EnsureFfmpegProcessStartedAsync(cancellationToken);
+                return await ReadNextJpegFrameAsync(cancellationToken);
+            }
+            catch
+            {
+                DisposeFfmpegProcess();
+                await EnsureFfmpegProcessStartedAsync(cancellationToken);
+                return await ReadNextJpegFrameAsync(cancellationToken);
+            }
         }
 
         private Mat ReadFrame()
@@ -333,6 +332,147 @@ public sealed class AdaptiveCameraCaptureAdapter : ICameraCapturePort, IDisposab
             };
         }
 
+        private async Task EnsureFfmpegProcessStartedAsync(CancellationToken cancellationToken)
+        {
+            if (_ffmpegProcess is { HasExited: false } && _ffmpegStdout is not null)
+            {
+                return;
+            }
+
+            DisposeFfmpegProcess();
+
+            _ffmpegProcess = StartFfmpegProcess();
+            _ffmpegProcess.Start();
+            _ffmpegStdout = _ffmpegProcess.StandardOutput.BaseStream;
+            _ffmpegStderrTask = _ffmpegProcess.StandardError.ReadToEndAsync(cancellationToken);
+            _ffmpegPendingBytes = [];
+
+            if (_source.Kind == CaptureSourceKind.Webcam)
+            {
+                for (var index = 0; index < FfmpegWebcamWarmupFrames; index++)
+                {
+                    await ReadNextJpegFrameAsync(cancellationToken);
+                }
+            }
+        }
+
+        private async Task<byte[]> ReadNextJpegFrameAsync(CancellationToken cancellationToken)
+        {
+            if (_ffmpegStdout is null)
+            {
+                throw new InvalidOperationException($"ffmpeg stream is not available for '{_source.DisplayValue}'.");
+            }
+
+            while (true)
+            {
+                if (TryExtractJpegFrame(ref _ffmpegPendingBytes, out var frame))
+                {
+                    return frame;
+                }
+
+                var chunk = new byte[4096];
+                var read = await _ffmpegStdout.ReadAsync(chunk, cancellationToken);
+                if (read <= 0)
+                {
+                    var stderr = _ffmpegStderrTask is null ? string.Empty : await _ffmpegStderrTask;
+                    var exitCode = _ffmpegProcess?.HasExited == true ? _ffmpegProcess.ExitCode : -1;
+                    throw new InvalidOperationException(
+                        $"ffmpeg failed to stream frames from '{_source.DisplayValue}' (exit code {exitCode}). {stderr}".Trim());
+                }
+
+                var combined = new byte[_ffmpegPendingBytes.Length + read];
+                Buffer.BlockCopy(_ffmpegPendingBytes, 0, combined, 0, _ffmpegPendingBytes.Length);
+                Buffer.BlockCopy(chunk, 0, combined, _ffmpegPendingBytes.Length, read);
+                _ffmpegPendingBytes = combined;
+            }
+        }
+
+        private void DisposeFfmpegProcess()
+        {
+            _ffmpegStdout?.Dispose();
+            _ffmpegStdout = null;
+            _ffmpegPendingBytes = [];
+
+            if (_ffmpegProcess is not null)
+            {
+                try
+                {
+                    if (!_ffmpegProcess.HasExited)
+                    {
+                        _ffmpegProcess.Kill(entireProcessTree: true);
+                    }
+                }
+                catch
+                {
+                    // Best-effort cleanup.
+                }
+                finally
+                {
+                    _ffmpegProcess.Dispose();
+                    _ffmpegProcess = null;
+                }
+            }
+        }
+
+        private static bool TryExtractJpegFrame(ref byte[] buffer, out byte[] frame)
+        {
+            frame = [];
+            if (buffer.Length < 4)
+            {
+                return false;
+            }
+
+            var start = -1;
+            for (var index = 0; index < buffer.Length - 1; index++)
+            {
+                if (buffer[index] == 0xFF && buffer[index + 1] == 0xD8)
+                {
+                    start = index;
+                    break;
+                }
+            }
+
+            if (start < 0)
+            {
+                buffer = buffer[^1..];
+                return false;
+            }
+
+            for (var index = start + 2; index < buffer.Length - 1; index++)
+            {
+                if (buffer[index] == 0xFF && buffer[index + 1] == 0xD9)
+                {
+                    var end = index + 1;
+                    var length = end - start + 1;
+                    frame = new byte[length];
+                    Buffer.BlockCopy(buffer, start, frame, 0, length);
+
+                    var remaining = buffer.Length - (end + 1);
+                    if (remaining > 0)
+                    {
+                        var leftover = new byte[remaining];
+                        Buffer.BlockCopy(buffer, end + 1, leftover, 0, remaining);
+                        buffer = leftover;
+                    }
+                    else
+                    {
+                        buffer = [];
+                    }
+
+                    return true;
+                }
+            }
+
+            if (start > 0)
+            {
+                var trimmed = new byte[buffer.Length - start];
+                Buffer.BlockCopy(buffer, start, trimmed, 0, trimmed.Length);
+                buffer = trimmed;
+            }
+
+            return false;
+        }
+
         private IEnumerable<string> BuildFfmpegArguments()
         {
             yield return "-hide_banner";
@@ -355,8 +495,8 @@ public sealed class AdaptiveCameraCaptureAdapter : ICameraCapturePort, IDisposab
             }
 
             yield return "-an";
-            yield return "-frames:v";
-            yield return "1";
+            yield return "-fps_mode";
+            yield return "vfr";
             yield return "-f";
             yield return "image2pipe";
             yield return "-vcodec";

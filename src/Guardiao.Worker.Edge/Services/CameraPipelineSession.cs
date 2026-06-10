@@ -20,6 +20,7 @@ public sealed class CameraPipelineSession
     private readonly BoundedCameraFrameQueue _queue;
     private readonly EdgeMetricsCollector _metrics;
     private readonly IClock _clock;
+    private readonly LatestCameraFrameStore _latestCameraFrameStore;
     private readonly FrameSamplerFactory _samplerFactory;
     private readonly Dictionary<Guid, FrameSampler> _samplers = [];
     private readonly Dictionary<Guid, long> _sequences = [];
@@ -36,6 +37,7 @@ public sealed class CameraPipelineSession
         BoundedCameraFrameQueue queue,
         EdgeMetricsCollector metrics,
         IClock clock,
+        LatestCameraFrameStore latestCameraFrameStore,
         FrameSamplerFactory samplerFactory)
     {
         _capturePort = capturePort;
@@ -49,6 +51,7 @@ public sealed class CameraPipelineSession
         _queue = queue;
         _metrics = metrics;
         _clock = clock;
+        _latestCameraFrameStore = latestCameraFrameStore;
         _samplerFactory = samplerFactory;
     }
 
@@ -60,16 +63,19 @@ public sealed class CameraPipelineSession
         await using var stream = await _capturePort.CaptureFrameAsync(camera, cancellationToken);
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory, cancellationToken);
+        var bytes = memory.ToArray();
 
         var sequence = _sequences.TryGetValue(cameraOptions.CameraId, out var current) ? current + 1 : 1;
         _sequences[cameraOptions.CameraId] = sequence;
+        var capturedAtUtc = _clock.UtcNow;
+        _latestCameraFrameStore.Update(cameraOptions.CameraId, bytes, capturedAtUtc, sequence);
 
         var frame = new CapturedFrame(
             cameraOptions.CameraId,
             cameraOptions.SiteId,
             cameraOptions.ProtectedCaseId,
-            memory.ToArray(),
-            _clock.UtcNow,
+            bytes,
+            capturedAtUtc,
             sequence);
 
         _queue.Enqueue(frame);

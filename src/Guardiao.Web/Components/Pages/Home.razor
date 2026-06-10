@@ -29,7 +29,7 @@ else
             <p class="eyebrow">Centro de monitoramento protegido</p>
             <h1>Resumo operacional</h1>
             <p class="hero-copy">
-                A tela principal consolida as ultimas evidencias capturadas por camera, as mulheres protegidas vistas no ambiente
+                A tela principal consolida o preview operacional mais recente de cada camera, as mulheres protegidas vistas no ambiente
                 e alertas de co-presenca quando um agressor monitorado aparece no mesmo ponto observado.
             </p>
         </div>
@@ -100,7 +100,6 @@ else
         <section class="camera-wall">
             @foreach (var camera in OrderedCameraViews())
             {
-                var previewUrl = GetEvidenceUrl(camera.LatestSnapshot);
                 <article class="camera-card @(camera.ActiveAlert is not null ? "camera-card-alert" : string.Empty)">
                     <div class="camera-head">
                         <div>
@@ -113,15 +112,19 @@ else
                     </div>
 
                     <div class="camera-preview">
-                        @if (!string.IsNullOrWhiteSpace(previewUrl))
+                        @if (camera.IsEnabled)
                         {
-                            <img src="@previewUrl" alt="Ultima evidencia capturada pela camera @camera.CameraName" />
+                            <img src="@GetCameraLiveStreamUrl(camera)" alt="Stream operacional ao vivo da camera @camera.CameraName" />
+                        }
+                        else if (!string.IsNullOrWhiteSpace(GetEvidenceUrl(camera.LatestSnapshot)))
+                        {
+                            <img src="@GetEvidenceUrl(camera.LatestSnapshot)" alt="Ultimo registro visual da camera @camera.CameraName" />
                         }
                         else
                         {
                             <div class="camera-preview-empty">
-                                <strong>Nenhuma evidencia visual recente</strong>
-                                <span>O painel usa a ultima evidencia disponivel por camera, nao streaming ao vivo.</span>
+                                <strong>Nenhum frame recente disponivel</strong>
+                                <span>A camera esta desabilitada ou ainda nao entregou um stream operacional disponivel.</span>
                             </div>
                         }
                     </div>
@@ -129,8 +132,8 @@ else
                     <div class="camera-meta">
                         <span>Origem: @camera.StreamEndpoint</span>
                         <span>
-                            Ultima deteccao:
-                            @(camera.LastDetectionAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "sem leitura recente")
+                            Ultima leitura:
+                            @DescribeLastReading(camera)
                         </span>
                     </div>
 
@@ -637,6 +640,19 @@ else
         return evidenceUrls.TryGetValue(preview.EvidenceId, out var dataUrl) && !string.IsNullOrWhiteSpace(dataUrl)
             ? dataUrl
             : null;
+    }
+
+    private static string GetCameraLiveStreamUrl(CameraOperationalViewModel camera)
+        => $"/operations/cameras/{camera.CameraId}/live";
+
+    private string DescribeLastReading(CameraOperationalViewModel camera)
+    {
+        if (camera.IsEnabled)
+        {
+            return "stream ao vivo ativo";
+        }
+
+        return camera.LastDetectionAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "sem leitura recente";
     }
 
     private static string DescribeRole(string subjectRole)

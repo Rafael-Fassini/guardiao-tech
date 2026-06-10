@@ -137,6 +137,11 @@ builder.Services
     .Bind(builder.Configuration.GetSection(OperationalNotificationsOptions.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<OperationalNotificationsOptions>, OperationalNotificationsOptionsValidator>();
+builder.Services
+    .AddOptions<WorkerPreviewOptions>()
+    .Bind(builder.Configuration.GetSection(WorkerPreviewOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<WorkerPreviewOptions>, WorkerPreviewOptionsValidator>();
 
 builder.Services.AddHttpClient<IVictimRegistryAccessTokenProvider, VictimRegistryClientCredentialsTokenProvider>()
     .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
@@ -157,6 +162,15 @@ builder.Services.AddHttpClient<WebhookIncidentNotificationChannel>((sp, client) 
         }
 
         client.Timeout = TimeSpan.FromSeconds(options.DeliveryTimeoutSeconds);
+    })
+    .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
+builder.Services.AddHttpClient<ICameraLivePreviewPort, HttpCameraLivePreviewPort>((sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<WorkerPreviewOptions>>().Value;
+        var security = sp.GetRequiredService<IOptions<ApiSecurityOptions>>().Value;
+        client.BaseAddress = new Uri(options.BaseUrl);
+        client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds);
+        client.DefaultRequestHeaders.TryAddWithoutValidation("X-Worker-Preview-Auth", security.WorkerSharedSecret);
     })
     .ConfigurePrimaryHttpMessageHandler(sp => sp.GetService<HttpMessageHandler>() ?? new HttpClientHandler());
 
@@ -192,10 +206,19 @@ builder.Services.AddSingleton<SensitiveDataRedactor>();
 builder.Services.AddSingleton<ApiMetricsCollector>();
 builder.Services.AddSingleton<ApiReadinessService>();
 builder.Services.AddSingleton<IMetricsPort>(sp => sp.GetRequiredService<ApiMetricsCollector>());
-builder.Services.AddScoped(sp => new CorrelationEngineOptions
+builder.Services.AddScoped(sp =>
 {
-    CooldownWindow = TimeSpan.FromMinutes(5),
-    DuplicateSuppressionWindow = TimeSpan.FromSeconds(30)
+    var configuration = sp.GetRequiredService<IConfiguration>().GetSection("CorrelationEngine");
+    var coPresenceWindowMinutes = configuration.GetValue<double?>("CoPresenceWindowMinutes") ?? 5;
+    var duplicateSuppressionWindowSeconds = configuration.GetValue<double?>("DuplicateSuppressionWindowSeconds") ?? 30;
+    var requireSameSiteForCoPresence = configuration.GetValue<bool?>("RequireSameSiteForCoPresence") ?? true;
+
+    return new CorrelationEngineOptions
+    {
+        CoPresenceWindow = TimeSpan.FromMinutes(coPresenceWindowMinutes),
+        DuplicateSuppressionWindow = TimeSpan.FromSeconds(duplicateSuppressionWindowSeconds),
+        RequireSameSiteForCoPresence = requireSameSiteForCoPresence
+    };
 });
 builder.Services.AddScoped<CandidateEventCorrelationService>();
 builder.Services.AddScoped<VictimRegistrySyncService>();

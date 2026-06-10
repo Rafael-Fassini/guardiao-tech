@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using Guardiao.Api;
 using Guardiao.Api.Contracts;
@@ -302,6 +303,62 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
         Assert.False(savedCamera.IsEnabled);
         Assert.Contains(auditEntries, x => x.Action == "camera.state.updated");
     }
+
+    [Fact]
+    public async Task GetCameraPreview_ShouldReturnLatestWorkerFrame()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+        var camera = new Camera(Guid.NewGuid(), "Camera Preview", "webcam://0");
+        db.Cameras.Add(camera);
+        await db.SaveChangesAsync();
+
+        _factory.WorkerPreviewPort.SetPreview(camera.Id, [1, 2, 3, 4], "image/jpeg", DateTime.UtcNow);
+
+        _client.DefaultRequestHeaders.Remove("X-Debug-User");
+        _client.DefaultRequestHeaders.Remove("X-Debug-Role");
+        _client.DefaultRequestHeaders.Add("X-Debug-User", "operator-preview");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "operator");
+
+        var response = await _client.GetAsync($"/api/operations/cameras/{camera.Id}/preview");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/jpeg", response.Content.Headers.ContentType?.MediaType);
+        Assert.True(response.Headers.Contains("X-Captured-At-Utc"));
+        Assert.Equal([1, 2, 3, 4], await response.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task GetCameraLiveStream_ShouldProxyMultipartPreview()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+        var camera = new Camera(Guid.NewGuid(), "Camera Live", "webcam://0");
+        db.Cameras.Add(camera);
+        await db.SaveChangesAsync();
+
+        _factory.WorkerPreviewPort.SetPreview(camera.Id, [1, 2, 3, 4], "image/jpeg", DateTime.UtcNow, 7);
+
+        _client.DefaultRequestHeaders.Remove("X-Debug-User");
+        _client.DefaultRequestHeaders.Remove("X-Debug-Role");
+        _client.DefaultRequestHeaders.Add("X-Debug-User", "operator-live");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "operator");
+
+        using var response = await _client.GetAsync(
+            $"/api/operations/cameras/{camera.Id}/live",
+            HttpCompletionOption.ResponseHeadersRead);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.StartsWith("multipart/x-mixed-replace", response.Content.Headers.ContentType?.MediaType);
+
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        var buffer = new byte[512];
+        var bytesRead = await stream.ReadAsync(buffer);
+        var text = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+
+        Assert.Contains("guardiao-frame", text);
+        Assert.Contains("Content-Type: image/jpeg", text);
+    }
 }
 
 public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
@@ -312,6 +369,7 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
 
     public FakeVictimRegistryHandler RegistryHandler { get; } = new();
     public FakeBiometricTemplateExtractor BiometricExtractor { get; } = new();
+    public FakeCameraLivePreviewPort WorkerPreviewPort { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -329,6 +387,8 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
             services.AddSingleton<HttpMessageHandler>(RegistryHandler);
             services.RemoveAll<IBiometricTemplateExtractor>();
             services.AddSingleton<IBiometricTemplateExtractor>(BiometricExtractor);
+            services.RemoveAll<ICameraLivePreviewPort>();
+            services.AddSingleton<ICameraLivePreviewPort>(WorkerPreviewPort);
         });
 
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
@@ -346,6 +406,8 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
                 ["ApiSecurity:EnableDebugHeaderAuthentication"] = "true",
                 ["ApiSecurity:PanelSharedSecret"] = "panel-test-secret",
                 ["ApiSecurity:WorkerSharedSecret"] = "worker-test-secret",
+                ["WorkerPreview:BaseUrl"] = "https://worker-preview.test",
+                ["WorkerPreview:RequestTimeoutSeconds"] = "2",
                 ["ApiSecurity:EnableSwaggerUi"] = "false",
                 ["BiometricProcessing:DetectionModelPath"] = DetectionModelPath,
                 ["BiometricProcessing:EmbeddingModelPath"] = EmbeddingModelPath,
@@ -374,6 +436,55 @@ public class GuardiaoApiFactory : WebApplicationFactory<ApiEntryPoint>
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}{extension}");
         File.WriteAllText(path, content);
         return path;
+    }
+}
+
+public sealed class FakeCameraLivePreviewPort : ICameraLivePreviewPort
+{
+    private readonly Dictionary<Guid, CameraLivePreviewPayload> _frames = [];
+
+    public void SetPreview(Guid cameraId, byte[] content, string contentType, DateTime capturedAtUtc, long sequence = 1)
+    {
+        _frames[cameraId] = new CameraLivePreviewPayload(content, contentType, capturedAtUtc, sequence);
+    }
+
+    public Task<CameraLivePreviewPayload?> GetLatestPreviewAsync(Guid cameraId, CancellationToken cancellationToken = default)
+    {
+        _frames.TryGetValue(cameraId, out var payload);
+        return Task.FromResult(payload);
+    }
+
+    public Task<CameraLivePreviewStreamPayload?> OpenLivePreviewStreamAsync(Guid cameraId, CancellationToken cancellationToken = default)
+    {
+        if (!_frames.TryGetValue(cameraId, out var payload))
+        {
+            return Task.FromResult<CameraLivePreviewStreamPayload?>(null);
+        }
+
+        var boundary = "guardiao-frame";
+        var header = $"--{boundary}\r\nContent-Type: {payload.ContentType}\r\nContent-Length: {payload.Content.Length}\r\n\r\n";
+        var footer = "\r\n";
+        var bytes = Encoding.ASCII.GetBytes(header)
+            .Concat(payload.Content)
+            .Concat(Encoding.ASCII.GetBytes(footer))
+            .ToArray();
+
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StreamContent(new MemoryStream(bytes))
+        };
+        response.Content.Headers.ContentType = new("multipart/x-mixed-replace")
+        {
+            Parameters = { new System.Net.Http.Headers.NameValueHeaderValue("boundary", boundary) }
+        };
+        var stream = new MemoryStream(bytes);
+
+        var streamPayload = new CameraLivePreviewStreamPayload(
+            response,
+            stream,
+            response.Content.Headers.ContentType.ToString());
+
+        return Task.FromResult<CameraLivePreviewStreamPayload?>(streamPayload);
     }
 }
 

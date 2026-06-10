@@ -12,7 +12,18 @@ RUN dotnet publish src/Guardiao.Worker.Edge/Guardiao.Worker.Edge.csproj -c Relea
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ffmpeg \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ffmpeg \
+        libfontconfig1 \
+        libglib2.0-0 \
+        libgl1 \
+        libgomp1 \
+        libsm6 \
+        libx11-6 \
+        libxext6 \
+        libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
+ENV LD_LIBRARY_PATH=/app/runtimes/linux-x64/native:${LD_LIBRARY_PATH}
 ENTRYPOINT ["dotnet", "Guardiao.Worker.Edge.dll"]

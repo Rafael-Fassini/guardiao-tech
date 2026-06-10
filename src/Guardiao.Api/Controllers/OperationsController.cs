@@ -14,10 +14,12 @@ namespace Guardiao.Api.Controllers;
 public class OperationsController : ControllerBase
 {
     private readonly GuardiaoDbContext _dbContext;
+    private readonly ICameraLivePreviewPort _cameraLivePreviewPort;
 
-    public OperationsController(GuardiaoDbContext dbContext)
+    public OperationsController(GuardiaoDbContext dbContext, ICameraLivePreviewPort cameraLivePreviewPort)
     {
         _dbContext = dbContext;
+        _cameraLivePreviewPort = cameraLivePreviewPort;
     }
 
     [HttpGet("summary")]
@@ -75,6 +77,55 @@ public class OperationsController : ControllerBase
             recentIncidents,
             recentAuditEntries,
             cameraViews));
+    }
+
+    [HttpGet("cameras/{cameraId:guid}/preview")]
+    public async Task<IActionResult> GetCameraPreview(Guid cameraId, CancellationToken cancellationToken)
+    {
+        var exists = await _dbContext.Cameras.AnyAsync(x => x.Id == cameraId, cancellationToken);
+        if (!exists)
+        {
+            return NotFound();
+        }
+
+        var preview = await _cameraLivePreviewPort.GetLatestPreviewAsync(cameraId, cancellationToken);
+        if (preview is null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+        if (preview.CapturedAtUtc.HasValue)
+        {
+            Response.Headers.Append("X-Captured-At-Utc", preview.CapturedAtUtc.Value.ToString("O"));
+        }
+        if (preview.Sequence.HasValue)
+        {
+            Response.Headers.Append("X-Frame-Sequence", preview.Sequence.Value.ToString());
+        }
+
+        return File(preview.Content, preview.ContentType);
+    }
+
+    [HttpGet("cameras/{cameraId:guid}/live")]
+    public async Task<IActionResult> GetCameraLiveStream(Guid cameraId, CancellationToken cancellationToken)
+    {
+        var exists = await _dbContext.Cameras.AnyAsync(x => x.Id == cameraId, cancellationToken);
+        if (!exists)
+        {
+            return NotFound();
+        }
+
+        await using var livePreview = await _cameraLivePreviewPort.OpenLivePreviewStreamAsync(cameraId, cancellationToken);
+        if (livePreview is null)
+        {
+            return NotFound();
+        }
+
+        Response.ContentType = livePreview.ContentType;
+        Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+        await livePreview.Content.CopyToAsync(Response.Body, cancellationToken);
+        return new EmptyResult();
     }
 
     private async Task<List<RecentDetectionRow>> LoadRecentDetectionsAsync(CancellationToken cancellationToken)

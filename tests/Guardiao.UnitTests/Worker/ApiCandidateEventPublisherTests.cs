@@ -27,7 +27,7 @@ public class ApiCandidateEventPublisherTests
                     candidateEventId = Guid.NewGuid(),
                     wasDuplicate = false,
                     createsIncident = true,
-                    decisionReasonCode = "RULE_MATCH",
+                    decisionReasonCode = "CO_PRESENCE_MATCH",
                     incidentId = Guid.NewGuid()
                 })
             });
@@ -70,7 +70,7 @@ public class ApiCandidateEventPublisherTests
                 candidateEventId = Guid.NewGuid(),
                 wasDuplicate = false,
                 createsIncident = true,
-                decisionReasonCode = "RULE_MATCH",
+                decisionReasonCode = "CO_PRESENCE_MATCH",
                 incidentId = Guid.NewGuid()
             })
         });

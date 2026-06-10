@@ -56,6 +56,7 @@ public sealed class ApprovedCameraReplayHarness
             new BoundedCameraFrameQueue(),
             metrics,
             new SystemClock(),
+            new LatestCameraFrameStore(),
             new FrameSamplerFactory());
 
         var camera = new EdgeCameraOptions

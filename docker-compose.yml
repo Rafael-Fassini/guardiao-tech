@@ -57,6 +57,10 @@ services:
       ApiSecurity__EnableDebugHeaderAuthentication: ${API_ENABLE_DEBUG_HEADER_AUTHENTICATION}
       ApiSecurity__PanelSharedSecret: ${PANEL_API_SHARED_SECRET}
       ApiSecurity__WorkerSharedSecret: ${WORKER_API_SHARED_SECRET}
+      WorkerPreview__BaseUrl: ${WORKER_PREVIEW_BASE_URL}
+      CorrelationEngine__CoPresenceWindowMinutes: ${CORRELATION_COPRESENCE_WINDOW_MINUTES}
+      CorrelationEngine__DuplicateSuppressionWindowSeconds: ${CORRELATION_DUPLICATE_SUPPRESSION_WINDOW_SECONDS}
+      CorrelationEngine__RequireSameSiteForCoPresence: ${CORRELATION_REQUIRE_SAME_SITE}
       ApiSecurity__EnableSwaggerUi: ${API_ENABLE_SWAGGER_UI}
       OperationalNotifications__EnableWebhook: ${NOTIFY_ENABLE_WEBHOOK}
       OperationalNotifications__WebhookUrl: ${NOTIFY_WEBHOOK_URL}
@@ -146,6 +150,8 @@ services:
       Logging__LogLevel__Default: ${GUARDIAO_LOG_LEVEL}
     ports:
       - "${EDGE_HEALTH_PORT}:${EDGE_HEALTH_PORT}"
+    devices:
+      - "${EDGE_CAMERA_0_DEVICE_PATH:-/dev/video0}:${EDGE_CAMERA_0_DEVICE_PATH:-/dev/video0}"
     volumes:
       - ./models:/app/models:ro
     healthcheck:

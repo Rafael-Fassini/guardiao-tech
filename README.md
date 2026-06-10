@@ -39,6 +39,7 @@ dotnet run --project src/Guardiao.Worker.Edge
 - `webcam://<indice>` now captures a real frame through OpenCV `VideoCapture`.
 - `rtsp://...` now opens the stream directly in the worker and publishes real candidate events to the API.
 - If the local OpenCvSharp `videoio` runtime is unavailable on the host, the worker falls back to `ffmpeg` for single-frame capture while keeping OpenCV/ONNX in the detection and embedding stages.
+- The operations Home now refreshes a live operational preview per camera from the worker, even when no incident or evidence has been generated yet.
 - For notebook/USB cameras during development:
   - prefer running `Guardiao.Worker.Edge` locally with `dotnet run --project src/Guardiao.Worker.Edge`
   - or expose `/dev/video*` manually to the worker container if you need webcam capture inside Docker
