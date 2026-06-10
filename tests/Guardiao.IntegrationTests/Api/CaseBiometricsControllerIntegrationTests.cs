@@ -34,7 +34,7 @@ public class CaseBiometricsControllerIntegrationTests : IClassFixture<GuardiaoAp
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
         Assert.Single(await db.BiometricTemplates.ToListAsync());
-        Assert.Contains(await db.AuditLogs.ToListAsync(), x => x.Action == "biometric_template.created");
+        Assert.DoesNotContain(await db.AuditLogs.ToListAsync(), x => x.Action.StartsWith("biometric_template.", StringComparison.Ordinal));
     }
 
     [Fact]

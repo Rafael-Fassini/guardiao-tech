@@ -148,8 +148,6 @@ public class OperationsPanelCriticalFlowTests
 
         var template = factory.ApiHandler.BiometricTemplates.Single(x => x.Id == uploaded.Id);
         Assert.False(template.IsActive);
-        Assert.Contains(factory.ApiHandler.AuditEntries, x => x.Action == "biometric_template.created" && x.EntityId == uploaded.Id.ToString());
-        Assert.Contains(factory.ApiHandler.AuditEntries, x => x.Action == "biometric_template.deactivated" && x.EntityId == uploaded.Id.ToString());
     }
 
     private sealed class TestBrowserFile : IBrowserFile

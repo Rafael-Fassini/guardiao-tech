@@ -6,6 +6,7 @@ using Guardiao.Web.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
+using System.Net.Http.Json;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,7 +63,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-app.MapPost("/operations/login", async (HttpContext context, IOptions<WebSecurityOptions> securityOptions) =>
+app.MapPost("/operations/login", async (
+    HttpContext context,
+    IOptions<WebSecurityOptions> securityOptions,
+    IOptions<OperationsPanelOptions> panelOptions,
+    IHttpClientFactory httpClientFactory,
+    ILoggerFactory loggerFactory,
+    CancellationToken cancellationToken) =>
 {
     if (!securityOptions.Value.EnableOperationsDemoLogin)
     {
@@ -87,10 +94,37 @@ app.MapPost("/operations/login", async (HttpContext context, IOptions<WebSecurit
 
     var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
     await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+    await TryWriteSessionAuditAsync(
+        httpClientFactory,
+        panelOptions.Value,
+        userName,
+        role,
+        "session.login",
+        loggerFactory.CreateLogger("OperationsSessionAudit"),
+        cancellationToken);
     return Results.Redirect("/");
 }).AllowAnonymous();
-app.MapPost("/operations/logout", async (HttpContext context) =>
+app.MapPost("/operations/logout", async (
+    HttpContext context,
+    IOptions<OperationsPanelOptions> panelOptions,
+    IHttpClientFactory httpClientFactory,
+    ILoggerFactory loggerFactory,
+    CancellationToken cancellationToken) =>
 {
+    var userName = context.User.Identity?.Name ?? context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var role = context.User.FindFirstValue(ClaimTypes.Role) ?? "viewer";
+    if (!string.IsNullOrWhiteSpace(userName))
+    {
+        await TryWriteSessionAuditAsync(
+            httpClientFactory,
+            panelOptions.Value,
+            userName,
+            role,
+            "session.logout",
+            loggerFactory.CreateLogger("OperationsSessionAudit"),
+            cancellationToken);
+    }
+
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
 }).AllowAnonymous();
@@ -169,6 +203,42 @@ static void ApplyOperationsApiHeaders(ClaimsPrincipal user, HttpRequestMessage r
     request.Headers.TryAddWithoutValidation("X-Panel-User", userName);
     request.Headers.TryAddWithoutValidation("X-Panel-Role", role);
     request.Headers.TryAddWithoutValidation("X-Panel-Auth", sharedSecret);
+}
+
+static async Task TryWriteSessionAuditAsync(
+    IHttpClientFactory httpClientFactory,
+    OperationsPanelOptions options,
+    string userName,
+    string role,
+    string action,
+    ILogger logger,
+    CancellationToken cancellationToken)
+{
+    try
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/audit/session")
+        {
+            Content = JsonContent.Create(new { action })
+        };
+        request.Headers.TryAddWithoutValidation("X-Panel-User", userName);
+        request.Headers.TryAddWithoutValidation("X-Panel-Role", role);
+        request.Headers.TryAddWithoutValidation("X-Panel-Auth", options.SharedSecret);
+
+        var client = httpClientFactory.CreateClient("OperationsApiProxy");
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning(
+                "Session audit write failed. Action={Action} User={UserName} StatusCode={StatusCode}",
+                action,
+                userName,
+                (int)response.StatusCode);
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Session audit write failed. Action={Action} User={UserName}", action, userName);
+    }
 }
 
 public partial class Program;

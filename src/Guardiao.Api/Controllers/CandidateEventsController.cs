@@ -134,12 +134,6 @@ public class CandidateEventsController : ControllerBase
                     RetentionMode.CaseBound);
 
                 _dbContext.EvidenceArtifacts.Add(artifact);
-                _dbContext.AuditLogs.Add(new AuditLog(
-                    AuditActorType.System,
-                    "evidence_artifact.created",
-                    nameof(EvidenceArtifact),
-                    artifact.Id.ToString(),
-                    $"incident_id={incident.Id};candidate_event_id={candidateEvent.Id};artifact_type={artifactType}"));
 
                 _metrics.IncrementCounter("evidences_created_total", ("artifact", artifactType.ToString()));
                 _metrics.AddCounter("evidence_bytes_uploaded_total", evidence.Content.LongLength, ("artifact", artifactType.ToString()));

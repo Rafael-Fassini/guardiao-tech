@@ -109,15 +109,6 @@ public class IncidentsController : ControllerBase
             nameof(Incident),
             incident.Id.ToString(),
             $"status={IncidentStatus.Confirmed};evidence_count={evidenceCount}"));
-        if (incident.EscalatedAtUtc is not null)
-        {
-            _dbContext.AuditLogs.Add(new AuditLog(
-                AuditActorType.Operator,
-                "incident.review.after_escalation",
-                nameof(Incident),
-                incident.Id.ToString(),
-                $"final_status={IncidentStatus.Confirmed};escalated_at_utc={incident.EscalatedAtUtc:O}"));
-        }
         await _dbContext.SaveChangesAsync(cancellationToken);
         _metrics.IncrementCounter("incident_reviews_confirmed_total");
 
@@ -151,15 +142,6 @@ public class IncidentsController : ControllerBase
             nameof(Incident),
             incident.Id.ToString(),
             $"status={IncidentStatus.Dismissed};evidence_count={evidenceCount}"));
-        if (incident.EscalatedAtUtc is not null)
-        {
-            _dbContext.AuditLogs.Add(new AuditLog(
-                AuditActorType.Operator,
-                "incident.review.after_escalation",
-                nameof(Incident),
-                incident.Id.ToString(),
-                $"final_status={IncidentStatus.Dismissed};escalated_at_utc={incident.EscalatedAtUtc:O}"));
-        }
         await _dbContext.SaveChangesAsync(cancellationToken);
         _metrics.IncrementCounter("incident_reviews_dismissed_total");
 

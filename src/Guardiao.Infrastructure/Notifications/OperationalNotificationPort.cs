@@ -118,14 +118,6 @@ public sealed class OperationalNotificationPort : INotificationPort
                     $"status={notification.Status};has_evidence={notification.HasEvidence.ToString().ToLowerInvariant()}",
                     cancellationToken);
 
-                _dbContext.AuditLogs.Add(new AuditLog(
-                    AuditActorType.Integration,
-                    "incident.notification.sent",
-                    nameof(Incident),
-                    notification.IncidentId.ToString(),
-                    $"event_type={eventType};channel={channel.ChannelName};attempts={attempt};has_evidence={notification.HasEvidence.ToString().ToLowerInvariant()}"));
-                await _dbContext.SaveChangesAsync(cancellationToken);
-
                 _logger.LogInformation(
                     "Operational notification delivered. EventType={EventType} Channel={Channel} IncidentId={IncidentId} Attempts={Attempts}",
                     eventType,
@@ -176,14 +168,6 @@ public sealed class OperationalNotificationPort : INotificationPort
             notification.HasEvidence,
             lastError?.Message ?? "unknown_notification_failure",
             cancellationToken);
-
-        _dbContext.AuditLogs.Add(new AuditLog(
-            AuditActorType.Integration,
-            "incident.notification.failed",
-            nameof(Incident),
-            notification.IncidentId.ToString(),
-            $"event_type={eventType};channel={channel.ChannelName};attempts={_options.RetryAttempts};error={lastError?.Message ?? "unknown"}"));
-        await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogError(
             lastError,

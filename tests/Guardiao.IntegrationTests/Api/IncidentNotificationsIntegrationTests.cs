@@ -76,7 +76,7 @@ public class IncidentNotificationsIntegrationTests : IClassFixture<GuardiaoApiFa
     }
 
     [Fact]
-    public async Task ReviewAfterEscalation_ShouldWriteDedicatedAudit()
+    public async Task ReviewAfterEscalation_ShouldKeepSingleReviewAuditEntry()
     {
         Guid incidentId;
         using (var scope = _factory.Services.CreateScope())
@@ -104,7 +104,8 @@ public class IncidentNotificationsIntegrationTests : IClassFixture<GuardiaoApiFa
         using var verifyScope = _factory.Services.CreateScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
         var auditEntries = await verifyDb.AuditLogs.Where(x => x.EntityId == incidentId.ToString()).ToListAsync();
-        Assert.Contains(auditEntries, x => x.Action == "incident.review.after_escalation");
+        Assert.Contains(auditEntries, x => x.Action == "incident.review.confirmed");
+        Assert.DoesNotContain(auditEntries, x => x.Action == "incident.review.after_escalation");
     }
 
     private sealed record IncidentNotificationHistoryItem(

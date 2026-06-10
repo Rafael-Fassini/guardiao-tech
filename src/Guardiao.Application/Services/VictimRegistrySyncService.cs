@@ -9,18 +9,15 @@ public class VictimRegistrySyncService
 {
     private readonly IVictimRegistryPort _victimRegistryPort;
     private readonly ICaseProjectionRepository _caseProjectionRepository;
-    private readonly IAuditLogRepository _auditLogRepository;
     private readonly IClock _clock;
 
     public VictimRegistrySyncService(
         IVictimRegistryPort victimRegistryPort,
         ICaseProjectionRepository caseProjectionRepository,
-        IAuditLogRepository auditLogRepository,
         IClock clock)
     {
         _victimRegistryPort = victimRegistryPort;
         _caseProjectionRepository = caseProjectionRepository;
-        _auditLogRepository = auditLogRepository;
         _clock = clock;
     }
 
@@ -80,14 +77,6 @@ public class VictimRegistrySyncService
         }
 
         await _caseProjectionRepository.UpsertAsync(protectedCase, personProjection, cancellationToken);
-        await _auditLogRepository.AddAsync(
-            new AuditLog(
-                AuditActorType.Integration,
-                "victim_registry.sync",
-                nameof(ProtectedCase),
-                protectedCase.Id.ToString(),
-                $"external_case_id={snapshot.ExternalCaseId};version={snapshot.Version}"),
-            cancellationToken);
 
         return existing is null
             ? SyncCaseResult.Created(snapshot.ExternalCaseId.Value, snapshot.Version)

@@ -130,12 +130,6 @@ public sealed class CaseBiometricsController : ControllerBase
             storagePath);
 
         _dbContext.BiometricTemplates.Add(template);
-        _dbContext.AuditLogs.Add(new AuditLog(
-            AuditActorType.Operator,
-            "biometric_template.created",
-            nameof(BiometricTemplate),
-            template.Id.ToString(),
-            $"case_id={caseId};faces={extraction.DetectedFaceCount};content_type={file.ContentType}"));
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Created(
@@ -169,12 +163,6 @@ public sealed class CaseBiometricsController : ControllerBase
         }
 
         template.Deactivate();
-        _dbContext.AuditLogs.Add(new AuditLog(
-            AuditActorType.Operator,
-            "biometric_template.deactivated",
-            nameof(BiometricTemplate),
-            template.Id.ToString(),
-            $"case_id={caseId};active={template.IsActive}"));
         await _dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }

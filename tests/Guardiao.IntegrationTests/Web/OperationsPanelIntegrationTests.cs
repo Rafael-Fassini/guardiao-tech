@@ -48,6 +48,7 @@ public class OperationsPanelIntegrationTests
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/", response.Headers.Location?.OriginalString);
+        Assert.Contains(factory.ApiHandler.AuditEntries, x => x.Action == "session.login" && x.EntityId == "operator.ana");
     }
 
     [Fact]
@@ -64,6 +65,7 @@ public class OperationsPanelIntegrationTests
 
         Assert.Equal(HttpStatusCode.Redirect, logoutResponse.StatusCode);
         Assert.Equal("/login", logoutResponse.Headers.Location?.OriginalString);
+        Assert.Contains(factory.ApiHandler.AuditEntries, x => x.Action == "session.logout" && x.EntityId == "operator.ana");
 
         using var rootResponse = await client.GetAsync("/");
         var rootHtml = await rootResponse.Content.ReadAsStringAsync();
@@ -599,6 +601,11 @@ internal sealed class TestAuthenticationStateProvider : AuthenticationStateProvi
         => Task.FromResult(_state);
 }
 
+internal sealed class TestAuditSessionRequest
+{
+    public string Action { get; set; } = string.Empty;
+}
+
 public sealed class FakeOperationsApiHandler : HttpMessageHandler
 {
     public const string SharedSecret = "test-panel-secret";
@@ -798,17 +805,6 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
             };
             BiometricTemplates.Add(template);
 
-            AuditEntries.Add(new AuditEntryState
-            {
-                Id = Guid.NewGuid(),
-                ActorType = "Operator",
-                Action = "biometric_template.created",
-                EntityName = "BiometricTemplate",
-                EntityId = template.Id.ToString(),
-                Details = $"case_id={caseId}",
-                CreatedAtUtc = DateTime.UtcNow
-            });
-
             return new HttpResponseMessage(HttpStatusCode.Created)
             {
                 Content = new StringContent(JsonSerializer.Serialize(template.ToUploadModel()), Encoding.UTF8, "application/json")
@@ -826,17 +822,6 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
 
             template.IsActive = false;
             template.DeactivatedAtUtc = DateTime.UtcNow;
-
-            AuditEntries.Add(new AuditEntryState
-            {
-                Id = Guid.NewGuid(),
-                ActorType = "Operator",
-                Action = "biometric_template.deactivated",
-                EntityName = "BiometricTemplate",
-                EntityId = template.Id.ToString(),
-                Details = "active=false",
-                CreatedAtUtc = DateTime.UtcNow
-            });
 
             return new HttpResponseMessage(HttpStatusCode.NoContent);
         }
@@ -903,6 +888,27 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
             });
 
             return Json(camera.ToModel());
+        }
+
+        if (request.Method == HttpMethod.Post && path == "/api/audit/session")
+        {
+            var body = await request.Content!.ReadFromJsonAsync<TestAuditSessionRequest>(cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException("Missing audit session request body.");
+            var userName = request.Headers.GetValues("X-Panel-User").Single();
+            var role = request.Headers.GetValues("X-Panel-Role").Single();
+
+            AuditEntries.Add(new AuditEntryState
+            {
+                Id = Guid.NewGuid(),
+                ActorType = "Operator",
+                Action = body.Action,
+                EntityName = "OperationsSession",
+                EntityId = userName,
+                Details = $"role={role};source=web-panel",
+                CreatedAtUtc = DateTime.UtcNow
+            });
+
+            return new HttpResponseMessage(HttpStatusCode.Accepted);
         }
 
         if (request.Method == HttpMethod.Get && path == "/api/audit")
