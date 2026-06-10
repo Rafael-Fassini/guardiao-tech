@@ -50,6 +50,43 @@ public class CandidateEventsControllerIntegrationTests : IClassFixture<GuardiaoA
         Assert.True(await verifyDb.BiometricCandidateEvents.AnyAsync(x => x.Id == eventId));
         Assert.False(await verifyDb.Incidents.AnyAsync(x => x.CandidateEventId == eventId));
         Assert.True(await verifyDb.CorrelationDecisions.AnyAsync(x => x.CandidateEventId == eventId));
+        Assert.Equal(0, await verifyDb.AuditLogs.CountAsync(x => x.Action == "incident.created"));
+        Assert.Equal(0, await verifyDb.IncidentNotificationRecords.CountAsync());
+        Assert.Empty(_factory.RegistryHandler.WebhookPayloads);
+    }
+
+    [Fact]
+    public async Task PostCandidateEvent_ShouldPersistButNotCreateIncident_WhenAggressorDetectionIsIsolated()
+    {
+        _factory.RegistryHandler.ResetWebhook();
+        var scope = await SeedScopeAsync("case-isolated-aggressor", MonitoredSubjectRole.Aggressor);
+
+        using var client = CreateWorkerClient();
+        var eventId = Guid.NewGuid();
+        var response = await client.PostAsJsonAsync("/api/candidate-events", new
+        {
+            eventId,
+            protectedCaseId = scope.ProtectedCaseId,
+            siteId = scope.SiteId,
+            cameraId = scope.CameraId,
+            matchScore = 0.93,
+            occurredAtUtc = DateTime.UtcNow
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(payload.GetProperty("wasDuplicate").GetBoolean());
+        Assert.False(payload.GetProperty("createsIncident").GetBoolean());
+        Assert.Equal("CO_PRESENCE_NOT_FOUND", payload.GetProperty("decisionReasonCode").GetString());
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+        Assert.True(await verifyDb.BiometricCandidateEvents.AnyAsync(x => x.Id == eventId));
+        Assert.False(await verifyDb.Incidents.AnyAsync(x => x.CandidateEventId == eventId));
+        Assert.True(await verifyDb.CorrelationDecisions.AnyAsync(x => x.CandidateEventId == eventId));
+        Assert.Equal(0, await verifyDb.AuditLogs.CountAsync(x => x.Action == "incident.created"));
+        Assert.Equal(0, await verifyDb.IncidentNotificationRecords.CountAsync());
         Assert.Empty(_factory.RegistryHandler.WebhookPayloads);
     }
 
@@ -115,6 +152,8 @@ public class CandidateEventsControllerIntegrationTests : IClassFixture<GuardiaoA
         Assert.Equal(protectedWoman.ProtectedCaseId, incident.ProtectedCaseId);
         Assert.True(await verifyDb.CorrelationDecisions.AnyAsync(x => x.CandidateEventId == eventId));
         Assert.Equal(2, await verifyDb.EvidenceArtifacts.CountAsync(x => x.CandidateEventId == eventId));
+        var auditEntry = await verifyDb.AuditLogs.SingleAsync(x => x.EntityId == incident.Id.ToString());
+        Assert.Equal("incident.created", auditEntry.Action);
         var notification = await verifyDb.IncidentNotificationRecords.SingleAsync(x => x.IncidentId == incident.Id);
         Assert.Equal("incident.created", notification.EventType);
         Assert.Equal("Sent", notification.DeliveryStatus);
@@ -166,6 +205,11 @@ public class CandidateEventsControllerIntegrationTests : IClassFixture<GuardiaoA
         Assert.Equal(1, await verifyDb.BiometricCandidateEvents.CountAsync(x => x.Id == eventId));
         Assert.Equal(1, await verifyDb.Incidents.CountAsync(x => x.CandidateEventId == eventId));
         Assert.Equal(1, await verifyDb.CorrelationDecisions.CountAsync(x => x.CandidateEventId == eventId));
+        var incidentId = await verifyDb.Incidents
+            .Where(x => x.CandidateEventId == eventId)
+            .Select(x => x.Id)
+            .SingleAsync();
+        Assert.Equal(1, await verifyDb.AuditLogs.CountAsync(x => x.EntityId == incidentId.ToString() && x.Action == "incident.created"));
         Assert.Single(_factory.RegistryHandler.WebhookPayloads);
     }
 

@@ -459,11 +459,59 @@ public class OperationsPanelIntegrationTests
         response.EnsureSuccessStatusCode();
         Assert.Contains("Resumo operacional", html);
         Assert.Contains("Casos monitorados", html);
+        Assert.Contains("Incidente ativo", html);
         Assert.Contains("Webcam Recepcao", html);
         Assert.Contains("Mulheres detectadas no ambiente", html);
         Assert.Contains("Agressor de teste", html);
         Assert.Contains("incident.review.confirmed", html);
         Assert.Contains("Em revisao", html);
+    }
+
+    [Fact]
+    public async Task GetDashboard_ShouldRenderOperationalAlertBanner_WhenSummaryContainsActiveIncident()
+    {
+        using var factory = new GuardiaoWebFactory();
+        var cameraId = Guid.NewGuid();
+        var siteId = Guid.NewGuid();
+        factory.ApiHandler.Cameras.Add(new CameraState
+        {
+            Id = cameraId,
+            SiteId = siteId,
+            Name = "Camera Lobby",
+            StreamEndpoint = "webcam://0",
+            IsEnabled = true
+        });
+        factory.ApiHandler.Sites.Add(new SiteState
+        {
+            Id = siteId,
+            InstitutionId = Guid.NewGuid(),
+            Name = "Empresa Piloto",
+            AddressLine = "Recepcao"
+        });
+        factory.ApiHandler.OperationalAlerts.Add(new OperationalAlertState
+        {
+            IncidentId = Guid.NewGuid(),
+            CameraId = cameraId,
+            CameraName = "Camera Lobby",
+            SiteName = "Empresa Piloto",
+            AggressorName = "Agressor Validado",
+            MatchScore = 0.96,
+            DetectedAtUtc = DateTime.UtcNow,
+            IncidentStatus = "PendingReview",
+            ProtectedWomenNames = { "Vitima 01" }
+        });
+
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, "operator.ana", "operator");
+
+        var response = await client.GetAsync("/");
+        var html = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("ALERTA", html);
+        Assert.Contains("Incidente ativo", html);
+        Assert.Contains("Agressor Validado em Camera Lobby", html);
+        Assert.Contains("Co-presenca com Vitima 01 em Empresa Piloto", html);
     }
 
     [Fact]

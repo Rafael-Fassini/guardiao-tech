@@ -76,14 +76,15 @@ Resultado esperado:
    - definicoes visuais de `Incidente` e `Casos monitorados`
    - cards de contagem
    - lista de cameras monitoradas
-   - preview da ultima evidencia quando houver
+   - stream operacional ao vivo por camera quando ela estiver habilitada
    - mulheres detectadas no ambiente quando houver deteccao recente
-   - alerta visual de agressor quando houver correlacao no mesmo contexto
+   - alerta visual de agressor apenas quando houver correlacao no mesmo contexto operacional
 
 Resultado esperado:
 - a tela nao fica travada em `Carregando`
-- sem evidencias, a Home continua renderizando com estados vazios claros
-- com evidencias, a camera mostra snapshot recente e contexto operacional
+- sem deteccoes recentes, a Home continua renderizando com estados vazios claros
+- com camera habilitada, o card mostra video MJPEG ao vivo
+- o alerta aparece somente quando um agressor e uma mulher protegida forem detectados na mesma camera dentro da janela operacional
 
 ## 5. Validacao de casos monitorados
 
@@ -163,8 +164,8 @@ Resultado esperado:
 - contadores `fps_in` e `fps_processed` crescendo
 
 Observacao:
-- o painel nao exibe streaming ao vivo nesta fase
-- a Home mostra preview da ultima evidencia gerada, nao um player continuo
+- a Home deve exibir o stream operacional ao vivo da camera habilitada
+- se a camera estiver ativa mas a imagem estiver preta, valide primeiro se outro processo esta segurando `/dev/video0`
 
 ## 8. Validacao de incidente
 
@@ -172,18 +173,80 @@ Ha duas formas de validar.
 
 ### Opcao A: deteccao operacional real
 
-1. Cadastre biometria de um caso monitorado.
-2. Posicione a pessoa correspondente diante da camera.
-3. Aguarde a deteccao e a correlacao pelo worker.
+1. Garanta dois casos monitorados na mesma camera:
+   - um classificado como `Mulher protegida`
+   - um classificado como `Agressor monitorado`
+2. Cadastre biometria facial valida para ambos.
+3. Com apenas um dos perfis em frente a camera, aguarde a deteccao.
+4. Depois provoque a co-presenca no mesmo contexto operacional.
 
 Resultado esperado:
-- a API recebe candidate events
-- um incidente aparece em `Incidentes`
-- a Home passa a mostrar contexto da camera e evidencias recentes
+- a API recebe `candidate events` tecnicos em ambos os momentos
+- deteccao isolada nao cria incidente
+- o incidente aparece em `Incidentes` somente quando agressor e mulher protegida forem detectados na mesma camera dentro da janela operacional
+- a Home passa a mostrar banner de alerta, destaque visual na camera e nomes relacionados ao encontro
 
 ### Opcao B: injecao controlada para smoke funcional
 
 Use um `curl` de candidate event compativel com o seed local e com o segredo tecnico do worker configurado.
+Os `protectedCaseId`, `siteId` e `cameraId` abaixo devem ser ajustados para os IDs existentes no seu banco local.
+
+#### 8.1 Teste negativo: deteccao isolada nao cria incidente
+
+Primeiro envie apenas a deteccao da mulher protegida:
+
+```bash
+curl -X POST http://localhost:8080/api/candidate-events \
+  -H 'Content-Type: application/json' \
+  -H 'X-Worker-Id: edge-worker-01' \
+  -H 'X-Worker-Auth: change-me-worker-secret' \
+  -d '{
+    "eventId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+    "protectedCaseId": "44444444-4444-4444-4444-444444444444",
+    "siteId": "22222222-2222-2222-2222-222222222222",
+    "cameraId": "33333333-3333-3333-3333-333333333333",
+    "matchScore": 0.92,
+    "occurredAtUtc": "2026-06-10T12:00:00Z"
+  }'
+```
+
+Resultado esperado:
+- resposta com `createsIncident=false`
+- nenhum item novo em `http://localhost:8081/incidents`
+- nenhum banner de alerta na Home
+
+#### 8.2 Teste positivo: co-presenca cria incidente
+
+Em seguida envie a deteccao do agressor na mesma camera e dentro de 5 minutos:
+
+```bash
+curl -X POST http://localhost:8080/api/candidate-events \
+  -H 'Content-Type: application/json' \
+  -H 'X-Worker-Id: edge-worker-01' \
+  -H 'X-Worker-Auth: change-me-worker-secret' \
+  -d '{
+    "eventId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+    "protectedCaseId": "55555555-5555-5555-5555-555555555555",
+    "siteId": "22222222-2222-2222-2222-222222222222",
+    "cameraId": "33333333-3333-3333-3333-333333333333",
+    "matchScore": 0.96,
+    "occurredAtUtc": "2026-06-10T12:03:00Z"
+  }'
+```
+
+Resultado esperado:
+- resposta com `createsIncident=true`
+- um incidente novo aparece em `Incidentes`
+- a Home exibe `Incidente ativo`
+- a camera correspondente aparece destacada
+
+#### 8.3 Teste de nao duplicacao
+
+Reenvie exatamente o mesmo payload do agressor ou um novo payload equivalente ainda dentro da janela.
+
+Resultado esperado:
+- a API responde sem criar um novo incidente
+- a lista de incidentes continua com apenas um encontro aberto para aquele contexto
 
 Depois valide:
 1. Abra `http://localhost:8081/incidents`.
@@ -207,15 +270,17 @@ Resultado esperado:
 
 1. Abra `http://localhost:8081/audit`.
 2. Confirme a presenca de eventos gerados durante o roteiro:
-   - login nao precisa aparecer
+   - `session.login` ou `session.logout` quando a sessao for aberta ou encerrada
    - `protected_case.subject_role.updated`
    - `camera.state.updated`
-   - `biometric_template.created`
+   - `incident.created`
    - `incident.review.confirmed` ou `incident.review.dismissed`
 
 Resultado esperado:
 - a tela renderiza sem travar
 - os registros mais recentes aparecem no topo
+- nao existe auditoria por deteccao facial isolada
+- nao existe auditoria por `candidate event` tecnico bruto
 
 ## 10. Validacao de logout
 
@@ -232,10 +297,33 @@ Considere o piloto local validado quando todos os itens abaixo forem verdadeiros
 - login e logout funcionam
 - Home carrega sem travar
 - cada rota mostra seu proprio conteudo
+- a Home exibe video ao vivo das cameras habilitadas
 - casos permitem alterar classificacao
 - biometria pode ser enviada no detalhe do caso
 - cameras podem ser habilitadas e desabilitadas
 - worker fica `Ready` e processa frames
+- deteccao isolada de agressor nao cria incidente
+- deteccao isolada de mulher protegida nao cria incidente
+- co-presenca na mesma camera cria exatamente um incidente
+- a Home mostra alerta operacional apenas para incidentes elegiveis
 - incidentes podem ser visualizados e revisados
-- auditoria reflete as alteracoes operacionais
+- auditoria reflete apenas as alteracoes operacionais relevantes
 - API, Web e Worker respondem com `Ready`
+
+## 12. Checklist operacional rapido para o piloto local
+
+Use esta lista antes de demonstrar para o cliente:
+
+- `docker compose ps` mostra `api`, `web`, `worker`, `postgres` e `redis` saudaveis
+- `curl http://localhost:8080/ready` retorna `Ready`
+- `curl http://localhost:8081/ready` retorna `Ready`
+- `curl http://localhost:18081/ready` retorna `Ready`
+- `curl http://localhost:18081/metrics` mostra `fps_in` e `fps_processed` aumentando
+- a Home carrega com pelo menos uma camera habilitada
+- o stream da webcam aparece no card da camera
+- existe ao menos um caso `Mulher protegida` e um caso `Agressor monitorado` na mesma camera
+- a biometria dos casos de teste esta cadastrada
+- deteccao isolada nao abre incidente
+- co-presenca abre um unico incidente
+- o operador consegue confirmar ou descartar o incidente
+- a trilha de auditoria mostra `incident.created` e a revisao humana correspondente

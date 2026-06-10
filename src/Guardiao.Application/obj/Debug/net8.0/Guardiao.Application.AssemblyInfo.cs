@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Guardiao.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a4d7250bb586abd9e50f6f96674aeb09b4afc6e9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1503f7cf6e80fd6d0d400dd9333152d27d7f12df")]
 [assembly: System.Reflection.AssemblyProductAttribute("Guardiao.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Guardiao.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

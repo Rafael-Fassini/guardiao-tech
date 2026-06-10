@@ -66,6 +66,7 @@ public class CandidateToIncidentIntegrationTests
         Assert.False(firstResult.Decision.CreatesIncident);
         Assert.Equal("CO_PRESENCE_NOT_FOUND", firstResult.Decision.ReasonCode.Value);
         Assert.Equal(0, await db.Incidents.CountAsync());
+        Assert.Equal(0, await db.AuditLogs.CountAsync());
 
         var secondEvent = new BiometricCandidateEvent(
             aggressor.Id,
@@ -80,6 +81,46 @@ public class CandidateToIncidentIntegrationTests
         Assert.Equal(protectedWoman.Id, secondResult.Incident!.ProtectedCaseId);
         Assert.Equal(1, await db.Incidents.CountAsync());
         Assert.Equal(2, await db.CorrelationDecisions.CountAsync());
+        var auditEntry = await db.AuditLogs.SingleAsync();
+        Assert.Equal("incident.created", auditEntry.Action);
+        Assert.Equal(secondResult.Incident.Id.ToString(), auditEntry.EntityId);
+    }
+
+    [Fact]
+    public async Task ConsumeAsync_ShouldNotCreateIncident_WhenAggressorDetectionIsIsolated()
+    {
+        await using var db = CreateDbContext();
+        var institutionId = Guid.NewGuid();
+        var scope = new CameraScope(Guid.NewGuid(), Guid.NewGuid());
+
+        var aggressor = new ProtectedCase(
+            new ExternalCaseId("case-aggressor-isolated"),
+            1,
+            institutionId,
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted,
+            MonitoredSubjectRole.Aggressor);
+
+        db.ProtectedCases.Add(aggressor);
+        db.MonitoringRules.Add(new MonitoringRule(
+            aggressor.Id,
+            scope,
+            new TimeWindow(TimeOnly.MinValue, new TimeOnly(23, 59)),
+            true));
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var result = await service.ConsumeAsync(new BiometricCandidateEvent(
+            aggressor.Id,
+            scope,
+            new MatchScore(0.93),
+            DateTime.UtcNow));
+
+        Assert.False(result.Decision.CreatesIncident);
+        Assert.Equal("CO_PRESENCE_NOT_FOUND", result.Decision.ReasonCode.Value);
+        Assert.Equal(0, await db.Incidents.CountAsync());
+        Assert.Equal(0, await db.AuditLogs.CountAsync());
     }
 
     [Fact]
