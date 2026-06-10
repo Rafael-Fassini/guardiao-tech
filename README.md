@@ -126,6 +126,8 @@ dotnet run --project src/Guardiao.Worker.Edge
   - validates panel technical authentication against the API
   - validates worker candidate-event ingestion against the API
   - validates incident/evidence route reachability
+- `docs/manual-pilot-validation.md`
+  - step-by-step operator validation for login, Home, cases, cameras, incidents and audit
 - `bash scripts/validate-deployment-config.sh`
   - checks required deployment artifacts and pilot-safe flags
 - `bash scripts/run-verification.sh`
@@ -148,6 +150,7 @@ dotnet run --project src/Guardiao.Worker.Edge
 - Backup/restore: `docs/backup-restore.md`
 - Rollout checklist: `docs/rollout-checklist.md`
 - Rollback checklist: `docs/rollback-checklist.md`
+- Manual pilot validation: `docs/manual-pilot-validation.md`
 
 ## Verification
 - Regression: `bash scripts/run-verification.sh`

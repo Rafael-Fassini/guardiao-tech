@@ -30,6 +30,49 @@ public class OperationsPanelIntegrationTests
     }
 
     [Fact]
+    public async Task PostLogin_ShouldRedirectToDashboard_WhenCredentialsAreValid()
+    {
+        using var factory = new GuardiaoWebFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        using var response = await client.PostAsync(
+            "/operations/login",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["userName"] = "operator.ana",
+                ["role"] = "operator"
+            }));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/", response.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    public async Task PostLogout_ShouldClearSessionAndReturnOperatorToLoginFlow()
+    {
+        using var factory = new GuardiaoWebFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        await AuthenticateAsync(client, "operator.ana", "operator");
+
+        using var logoutResponse = await client.PostAsync("/operations/logout", content: null);
+
+        Assert.Equal(HttpStatusCode.Redirect, logoutResponse.StatusCode);
+        Assert.Equal("/login", logoutResponse.Headers.Location?.OriginalString);
+
+        using var rootResponse = await client.GetAsync("/");
+        var rootHtml = await rootResponse.Content.ReadAsStringAsync();
+
+        rootResponse.EnsureSuccessStatusCode();
+        Assert.Contains("Acesso negado", rootHtml);
+    }
+
+    [Fact]
     public async Task GetRoot_ShouldRenderAuthorizationAwareMessage_WhenUnauthenticated()
     {
         using var factory = new GuardiaoWebFactory();
@@ -65,6 +108,124 @@ public class OperationsPanelIntegrationTests
         Assert.Contains("Incidentes", html);
         Assert.Contains("PendingReview", html);
         Assert.Contains("Abrir", html);
+    }
+
+    [Fact]
+    public async Task GetCases_ShouldRenderOperationalClassificationAndRulesLink_WhenAuthenticated()
+    {
+        using var factory = new GuardiaoWebFactory();
+        factory.ApiHandler.Cases.Add(new ProtectedCaseState
+        {
+            Id = Guid.NewGuid(),
+            ExternalCaseId = "case-operator-flow",
+            SubjectRole = "ProtectedWoman",
+            Version = 3,
+            MonitoringStatus = "enabled",
+            ConsentStatus = "granted",
+            PersonProjectionId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow.AddMinutes(-20),
+            LastSynchronizedAt = DateTime.UtcNow,
+            LastSyncStatus = "ok"
+        });
+
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, "operator.ana", "operator");
+
+        var response = await client.GetAsync("/cases");
+        var html = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("Casos monitorados", html);
+        Assert.Contains("Mulher protegida", html);
+        Assert.Contains("Regras", html);
+    }
+
+    [Fact]
+    public async Task GetCaseDetail_ShouldRenderClassificationBiometricsAndRules_WhenAuthenticated()
+    {
+        using var factory = new GuardiaoWebFactory();
+        var caseId = Guid.NewGuid();
+        var personProjectionId = Guid.NewGuid();
+        factory.ApiHandler.Cases.Add(new ProtectedCaseState
+        {
+            Id = caseId,
+            ExternalCaseId = "case-detail-flow",
+            SubjectRole = "Aggressor",
+            Version = 4,
+            MonitoringStatus = "enabled",
+            ConsentStatus = "granted",
+            PersonProjectionId = personProjectionId,
+            CreatedAt = DateTime.UtcNow.AddHours(-2),
+            LastSynchronizedAt = DateTime.UtcNow,
+            LastSyncStatus = "ok"
+        });
+        factory.ApiHandler.Rules.Add(new MonitoringRuleState
+        {
+            Id = Guid.NewGuid(),
+            ProtectedCaseId = caseId,
+            SiteId = Guid.NewGuid(),
+            CameraId = Guid.NewGuid(),
+            StartsAt = new TimeOnly(8, 0),
+            EndsAt = new TimeOnly(18, 0),
+            IsEnabled = true
+        });
+        factory.ApiHandler.BiometricTemplates.Add(new BiometricTemplateState
+        {
+            Id = Guid.NewGuid(),
+            PersonProjectionId = personProjectionId,
+            ExternalPersonId = "person-detail-flow",
+            Source = "panel_upload",
+            DisplayName = "agressor-01.jpg",
+            ContentType = "image/jpeg",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-5)
+        });
+
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, "operator.ana", "operator");
+
+        var response = await client.GetAsync($"/cases/{caseId}");
+        var html = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("Classificacao operacional", html);
+        Assert.Contains("Agressor monitorado", html);
+        Assert.Contains("Biometria cadastrada", html);
+        Assert.Contains("Salvar regra", html);
+    }
+
+    [Fact]
+    public async Task GetCameras_ShouldRenderSitesCameraStateAndToggle_WhenAuthenticated()
+    {
+        using var factory = new GuardiaoWebFactory();
+        var siteId = Guid.NewGuid();
+        factory.ApiHandler.Sites.Add(new SiteState
+        {
+            Id = siteId,
+            InstitutionId = Guid.NewGuid(),
+            Name = "Campus Norte",
+            AddressLine = "Bloco C"
+        });
+        factory.ApiHandler.Cameras.Add(new CameraState
+        {
+            Id = Guid.NewGuid(),
+            SiteId = siteId,
+            Name = "Entrada principal",
+            StreamEndpoint = "webcam://0",
+            IsEnabled = true
+        });
+
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, "operator.ana", "operator");
+
+        var response = await client.GetAsync("/cameras");
+        var html = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("Cameras e sites", html);
+        Assert.Contains("Campus Norte", html);
+        Assert.Contains("Entrada principal", html);
+        Assert.Contains("Desabilitar", html);
     }
 
     [Fact]
