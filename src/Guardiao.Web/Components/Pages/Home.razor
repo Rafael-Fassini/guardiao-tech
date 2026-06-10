@@ -88,95 +88,105 @@ else
         </section>
     }
 
-    <section class="camera-wall">
-        @foreach (var camera in OrderedCameraViews())
-        {
-            var previewUrl = GetEvidenceUrl(camera.LatestSnapshot);
-            <article class="camera-card @(camera.ActiveAlert is not null ? "camera-card-alert" : string.Empty)">
-                <div class="camera-head">
-                    <div>
-                        <span class="camera-site">@camera.SiteName</span>
-                        <h2>@camera.CameraName</h2>
+    @if (summary.CameraViews.Count == 0)
+    {
+        <section class="panel-empty operational-empty">
+            <strong>Nenhuma camera monitorada disponivel.</strong>
+            <span>Assim que houver cameras cadastradas com evidencias recentes, o painel operacional exibira a ultima leitura de cada ambiente.</span>
+        </section>
+    }
+    else
+    {
+        <section class="camera-wall">
+            @foreach (var camera in OrderedCameraViews())
+            {
+                var previewUrl = GetEvidenceUrl(camera.LatestSnapshot);
+                <article class="camera-card @(camera.ActiveAlert is not null ? "camera-card-alert" : string.Empty)">
+                    <div class="camera-head">
+                        <div>
+                            <span class="camera-site">@camera.SiteName</span>
+                            <h2>@camera.CameraName</h2>
+                        </div>
+                        <span class="camera-status @(camera.IsEnabled ? "camera-status-live" : "camera-status-off")">
+                            @(camera.IsEnabled ? "Monitorando" : "Desabilitada")
+                        </span>
                     </div>
-                    <span class="camera-status @(camera.IsEnabled ? "camera-status-live" : "camera-status-off")">
-                        @(camera.IsEnabled ? "Monitorando" : "Desabilitada")
-                    </span>
-                </div>
 
-                <div class="camera-preview">
-                    @if (!string.IsNullOrWhiteSpace(previewUrl))
+                    <div class="camera-preview">
+                        @if (!string.IsNullOrWhiteSpace(previewUrl))
+                        {
+                            <img src="@previewUrl" alt="Ultima evidencia capturada pela camera @camera.CameraName" />
+                        }
+                        else
+                        {
+                            <div class="camera-preview-empty">
+                                <strong>Nenhuma evidencia visual recente</strong>
+                                <span>O painel usa a ultima evidencia disponivel por camera, nao streaming ao vivo.</span>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="camera-meta">
+                        <span>Origem: @camera.StreamEndpoint</span>
+                        <span>
+                            Ultima deteccao:
+                            @(camera.LastDetectionAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "sem leitura recente")
+                        </span>
+                    </div>
+
+                    @if (camera.ActiveAlert is not null)
                     {
-                        <img src="@previewUrl" alt="Ultima evidencia capturada pela camera @camera.CameraName" />
+                        <section class="camera-alert">
+                            <div class="camera-alert-head">
+                                <strong>Alerta de agressor no ambiente</strong>
+                                <span>Score @camera.ActiveAlert.MatchScore.ToString("0.00")</span>
+                            </div>
+                            <p>
+                                @camera.ActiveAlert.FullName foi identificado no mesmo ambiente de
+                                @string.Join(", ", camera.ActiveAlert.NearbyProtectedWomen).
+                            </p>
+                        </section>
                     }
-                    else
-                    {
-                        <div class="camera-preview-empty">
-                            <strong>Nenhuma evidencia visual recente</strong>
-                            <span>A camera esta ativa, mas ainda nao publicou snapshot operacional para o painel.</span>
-                        </div>
-                    }
-                </div>
 
-                <div class="camera-meta">
-                    <span>Origem: @camera.StreamEndpoint</span>
-                    <span>
-                        Ultima deteccao:
-                        @(camera.LastDetectionAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "sem leitura recente")
-                    </span>
-                </div>
-
-                @if (camera.ActiveAlert is not null)
-                {
-                    <section class="camera-alert">
-                        <div class="camera-alert-head">
-                            <strong>Alerta de agressor no ambiente</strong>
-                            <span>Score @camera.ActiveAlert.MatchScore.ToString("0.00")</span>
+                    <section class="detection-panel">
+                        <div class="section-head">
+                            <strong>Mulheres detectadas no ambiente</strong>
+                            <span>@camera.RecentProtectedWomen.Count item(ns)</span>
                         </div>
-                        <p>
-                            @camera.ActiveAlert.FullName foi identificado no mesmo ambiente de
-                            @string.Join(", ", camera.ActiveAlert.NearbyProtectedWomen).
-                        </p>
+
+                        @if (camera.RecentProtectedWomen.Count == 0)
+                        {
+                            <p class="panel-empty camera-empty">Nenhuma mulher protegida detectada nesta camera nas ultimas leituras.</p>
+                        }
+                        else
+                        {
+                            <div class="detection-list">
+                                @foreach (var detection in camera.RecentProtectedWomen)
+                                {
+                                    var detectionPreviewUrl = GetEvidenceUrl(detection.Snapshot);
+                                    <article class="detection-card">
+                                        @if (!string.IsNullOrWhiteSpace(detectionPreviewUrl))
+                                        {
+                                            <img src="@detectionPreviewUrl" alt="Evidencia de @detection.FullName" />
+                                        }
+                                        <div>
+                                            <strong>@detection.FullName</strong>
+                                            <span>@DescribeRole(detection.SubjectRole)</span>
+                                            <span>
+                                                Detectada em @detection.DetectedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                                                com score @detection.MatchScore.ToString("0.00")
+                                            </span>
+                                            <span>Status do incidente: @DescribeIncidentStatus(detection.IncidentStatus)</span>
+                                        </div>
+                                    </article>
+                                }
+                            </div>
+                        }
                     </section>
-                }
-
-                <section class="detection-panel">
-                    <div class="section-head">
-                        <strong>Mulheres detectadas no ambiente</strong>
-                        <span>@camera.RecentProtectedWomen.Count item(ns)</span>
-                    </div>
-
-                    @if (camera.RecentProtectedWomen.Count == 0)
-                    {
-                        <p class="panel-empty camera-empty">Nenhuma mulher protegida detectada nesta camera nas ultimas leituras.</p>
-                    }
-                    else
-                    {
-                        <div class="detection-list">
-                            @foreach (var detection in camera.RecentProtectedWomen)
-                            {
-                                var detectionPreviewUrl = GetEvidenceUrl(detection.Snapshot);
-                                <article class="detection-card">
-                                    @if (!string.IsNullOrWhiteSpace(detectionPreviewUrl))
-                                    {
-                                        <img src="@detectionPreviewUrl" alt="Evidencia de @detection.FullName" />
-                                    }
-                                    <div>
-                                        <strong>@detection.FullName</strong>
-                                        <span>@DescribeRole(detection.SubjectRole)</span>
-                                        <span>
-                                            Detectada em @detection.DetectedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")
-                                            com score @detection.MatchScore.ToString("0.00")
-                                        </span>
-                                        <span>Status do incidente: @DescribeIncidentStatus(detection.IncidentStatus)</span>
-                                    </div>
-                                </article>
-                            }
-                        </div>
-                    }
-                </section>
-            </article>
-        }
-    </section>
+                </article>
+            }
+        </section>
+    }
 
     <div class="two-col">
         <section class="panel">
@@ -302,6 +312,12 @@ else
 
     .panel-error {
         color: #912f2f;
+        display: grid;
+        gap: 8px;
+    }
+
+    .operational-empty {
+        margin-bottom: 18px;
         display: grid;
         gap: 8px;
     }

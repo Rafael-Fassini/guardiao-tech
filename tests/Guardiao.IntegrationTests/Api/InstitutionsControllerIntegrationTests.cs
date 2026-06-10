@@ -122,6 +122,17 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
 
+        db.EvidenceArtifacts.RemoveRange(db.EvidenceArtifacts);
+        db.Incidents.RemoveRange(db.Incidents);
+        db.BiometricCandidateEvents.RemoveRange(db.BiometricCandidateEvents);
+        db.PersonProjections.RemoveRange(db.PersonProjections);
+        db.ProtectedCases.RemoveRange(db.ProtectedCases);
+        db.Cameras.RemoveRange(db.Cameras);
+        db.Sites.RemoveRange(db.Sites);
+        db.AuditLogs.RemoveRange(db.AuditLogs);
+        await db.SaveChangesAsync();
+
+        var site = new Site(Guid.NewGuid(), "Site Summary", "Address Summary");
         db.Incidents.Add(new Incident(Guid.NewGuid(), Guid.NewGuid()));
         db.ProtectedCases.Add(new ProtectedCase(
             new ExternalCaseId("case-summary"),
@@ -130,7 +141,8 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
             Guid.NewGuid(),
             MonitoringStatus.Enabled,
             ConsentStatus.Granted));
-        db.Cameras.Add(new Camera(Guid.NewGuid(), "Camera Summary", "rtsp://summary"));
+        db.Sites.Add(site);
+        db.Cameras.Add(new Camera(site.Id, "Camera Summary", "rtsp://summary"));
         db.AuditLogs.Add(new AuditLog(
             Guardiao.Domain.Enums.AuditActorType.Operator,
             "summary.loaded",
@@ -152,6 +164,118 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
         Assert.Equal(1, payload.GetProperty("incidentCount").GetInt32());
         Assert.Equal(1, payload.GetProperty("caseCount").GetInt32());
         Assert.Equal(1, payload.GetProperty("cameraCount").GetInt32());
+        Assert.Equal(1, payload.GetProperty("cameraViews").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task GetOperationsSummary_ShouldReturnCameraViewsWithDetectionsAndAggressorAlert()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<GuardiaoDbContext>();
+
+        db.EvidenceArtifacts.RemoveRange(db.EvidenceArtifacts);
+        db.Incidents.RemoveRange(db.Incidents);
+        db.BiometricCandidateEvents.RemoveRange(db.BiometricCandidateEvents);
+        db.PersonProjections.RemoveRange(db.PersonProjections);
+        db.ProtectedCases.RemoveRange(db.ProtectedCases);
+        db.Cameras.RemoveRange(db.Cameras);
+        db.Sites.RemoveRange(db.Sites);
+        db.AuditLogs.RemoveRange(db.AuditLogs);
+        await db.SaveChangesAsync();
+
+        var institutionId = Guid.NewGuid();
+        var site = new Site(institutionId, "Site Operations", "Address Operations");
+        var camera = new Camera(site.Id, "Camera Patio", "webcam://0");
+
+        var protectedWoman = new ProtectedCase(
+            new ExternalCaseId("case-protected"),
+            1,
+            institutionId,
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted);
+        var protectedWomanProjection = new PersonProjection(
+            new ExternalPersonId("person-protected"),
+            protectedWoman.Id,
+            "Vitima Teste",
+            false,
+            DateTime.UtcNow);
+        protectedWoman.BindPersonProjection(protectedWomanProjection.Id);
+
+        var aggressor = new ProtectedCase(
+            new ExternalCaseId("case-aggressor"),
+            1,
+            institutionId,
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted,
+            Guardiao.Domain.Enums.MonitoredSubjectRole.Aggressor);
+        var aggressorProjection = new PersonProjection(
+            new ExternalPersonId("person-aggressor"),
+            aggressor.Id,
+            "Agressor Teste",
+            false,
+            DateTime.UtcNow);
+        aggressor.BindPersonProjection(aggressorProjection.Id);
+
+        var protectedWomanCandidate = new BiometricCandidateEvent(
+            protectedWoman.Id,
+            new CameraScope(site.Id, camera.Id),
+            new MatchScore(0.94),
+            DateTime.UtcNow.AddMinutes(-2));
+        var aggressorCandidate = new BiometricCandidateEvent(
+            aggressor.Id,
+            new CameraScope(site.Id, camera.Id),
+            new MatchScore(0.98),
+            DateTime.UtcNow.AddMinutes(-1));
+
+        var protectedWomanIncident = new Incident(protectedWoman.Id, protectedWomanCandidate.Id);
+        var aggressorIncident = new Incident(aggressor.Id, aggressorCandidate.Id);
+
+        var protectedWomanSnapshot = new EvidenceArtifact(
+            protectedWomanIncident.Id,
+            protectedWomanCandidate.Id,
+            Guardiao.Domain.Enums.EvidenceArtifactType.Snapshot,
+            "evidences/protected.jpg",
+            "image/jpeg",
+            RetentionMode.CaseBound);
+        var aggressorSnapshot = new EvidenceArtifact(
+            aggressorIncident.Id,
+            aggressorCandidate.Id,
+            Guardiao.Domain.Enums.EvidenceArtifactType.Snapshot,
+            "evidences/aggressor.jpg",
+            "image/jpeg",
+            RetentionMode.CaseBound);
+
+        db.Sites.Add(site);
+        db.Cameras.Add(camera);
+        db.ProtectedCases.AddRange(protectedWoman, aggressor);
+        db.PersonProjections.AddRange(protectedWomanProjection, aggressorProjection);
+        db.BiometricCandidateEvents.AddRange(protectedWomanCandidate, aggressorCandidate);
+        db.Incidents.AddRange(protectedWomanIncident, aggressorIncident);
+        db.EvidenceArtifacts.AddRange(protectedWomanSnapshot, aggressorSnapshot);
+        await db.SaveChangesAsync();
+
+        _client.DefaultRequestHeaders.Remove("X-Debug-User");
+        _client.DefaultRequestHeaders.Remove("X-Debug-Role");
+        _client.DefaultRequestHeaders.Add("X-Debug-User", "operator-summary");
+        _client.DefaultRequestHeaders.Add("X-Debug-Role", "operator");
+
+        var response = await _client.GetAsync("/api/operations/summary");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<OperationsSummaryResponse>();
+        var cameraView = Assert.Single(payload!.CameraViews);
+
+        Assert.Equal(camera.Id, cameraView.CameraId);
+        Assert.Equal("Camera Patio", cameraView.CameraName);
+        Assert.NotNull(cameraView.LatestSnapshot);
+        Assert.Single(cameraView.RecentProtectedWomen);
+        Assert.Equal("Vitima Teste", cameraView.RecentProtectedWomen.Single().FullName);
+        Assert.NotNull(cameraView.ActiveAlert);
+        Assert.Equal("Agressor Teste", cameraView.ActiveAlert!.FullName);
+        Assert.Contains("Vitima Teste", cameraView.ActiveAlert.NearbyProtectedWomen);
     }
 
     [Fact]

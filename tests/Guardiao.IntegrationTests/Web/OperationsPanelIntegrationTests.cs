@@ -300,6 +300,34 @@ public class OperationsPanelIntegrationTests
     }
 
     [Fact]
+    public async Task GetDashboard_ShouldRenderOperationalEmptyState_WhenNoCameraViewsAreAvailable()
+    {
+        using var factory = new GuardiaoWebFactory();
+        factory.ApiHandler.Cases.Add(new ProtectedCaseState
+        {
+            Id = Guid.NewGuid(),
+            ExternalCaseId = "case-empty-dashboard",
+            SubjectRole = "ProtectedWoman",
+            Version = 1,
+            MonitoringStatus = "enabled",
+            ConsentStatus = "granted",
+            CreatedAt = DateTime.UtcNow,
+            LastSynchronizedAt = DateTime.UtcNow,
+            LastSyncStatus = "ok"
+        });
+
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, "operator.ana", "operator");
+
+        var response = await client.GetAsync("/");
+        var html = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("Nenhuma camera monitorada disponivel.", html);
+        Assert.Contains("ultima leitura de cada ambiente", html);
+    }
+
+    [Fact]
     public async Task GetReady_ShouldReturnReady_WhenOperationsApiHeadersWork()
     {
         using var factory = new GuardiaoWebFactory();
