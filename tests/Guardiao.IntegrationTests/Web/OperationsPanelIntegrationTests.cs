@@ -403,12 +403,16 @@ public class OperationsPanelIntegrationTests
                 ContentType = "image/jpeg",
                 CapturedAtUtc = DateTime.UtcNow
             },
-            ActiveAlert = new AggressorPresenceAlertState
+            ActiveAlert = new OperationalAlertState
             {
-                ProtectedCaseId = Guid.NewGuid(),
-                FullName = "Agressor de teste",
+                IncidentId = incidentId,
+                CameraId = cameraId,
+                CameraName = "Webcam Recepcao",
+                SiteName = "Campus Central",
+                AggressorName = "Agressor de teste",
                 MatchScore = 0.97,
                 DetectedAtUtc = DateTime.UtcNow,
+                IncidentStatus = "PendingReview",
                 Snapshot = new EvidencePreviewState
                 {
                     IncidentId = incidentId,
@@ -435,7 +439,7 @@ public class OperationsPanelIntegrationTests
                 CapturedAtUtc = DateTime.UtcNow
             }
         });
-        factory.ApiHandler.CameraViews[0].ActiveAlert!.NearbyProtectedWomen.Add("Vitima Piloto");
+        factory.ApiHandler.CameraViews[0].ActiveAlert!.ProtectedWomenNames.Add("Vitima Piloto");
         factory.ApiHandler.IncidentEvidences.Add(new IncidentEvidenceState
         {
             Id = evidenceId,
@@ -617,6 +621,7 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
     public List<SiteState> Sites { get; } = [];
     public List<CameraState> Cameras { get; } = [];
     public List<CameraOperationalViewState> CameraViews { get; } = [];
+    public List<OperationalAlertState> OperationalAlerts { get; } = [];
     public List<AuditEntryState> AuditEntries { get; } = [];
     public List<BiometricTemplateState> BiometricTemplates { get; } = [];
     public List<IncidentEvidenceState> IncidentEvidences { get; } = [];
@@ -649,6 +654,12 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
                         [],
                         null))
                     .ToArray();
+            var activeOperationalAlerts = OperationalAlerts.Count > 0
+                ? OperationalAlerts.Select(x => x.ToModel()).ToArray()
+                : CameraViews
+                    .Where(x => x.ActiveAlert is not null)
+                    .Select(x => x.ActiveAlert!.ToModel())
+                    .ToArray();
 
             return Json(new OperationsSummaryModel(
                 Incidents.Count,
@@ -657,7 +668,8 @@ public sealed class FakeOperationsApiHandler : HttpMessageHandler
                 AuditEntries.Count,
                 Incidents.OrderByDescending(x => x.CreatedAtUtc).Take(5).Select(x => x.ToRecentModel()).ToArray(),
                 AuditEntries.OrderByDescending(x => x.CreatedAtUtc).Take(5).Select(x => x.ToModel()).ToArray(),
-                cameraViews));
+                cameraViews,
+                activeOperationalAlerts));
         }
 
         if (request.Method == HttpMethod.Get && path == "/api/incidents")
@@ -1023,7 +1035,7 @@ public sealed class CameraOperationalViewState
     public DateTime? LastDetectionAtUtc { get; set; }
     public EvidencePreviewState? LatestSnapshot { get; set; }
     public List<DetectedSubjectState> RecentProtectedWomen { get; } = [];
-    public AggressorPresenceAlertState? ActiveAlert { get; set; }
+    public OperationalAlertState? ActiveAlert { get; set; }
 
     public CameraOperationalViewModel ToModel()
         => new(
@@ -1066,17 +1078,21 @@ public sealed class DetectedSubjectState
         => new(ProtectedCaseId, PersonProjectionId, FullName, SubjectRole, IsBystander, IncidentStatus, MatchScore, DetectedAtUtc, Snapshot?.ToModel());
 }
 
-public sealed class AggressorPresenceAlertState
+public sealed class OperationalAlertState
 {
-    public Guid ProtectedCaseId { get; set; }
-    public string FullName { get; set; } = string.Empty;
+    public Guid IncidentId { get; set; }
+    public Guid CameraId { get; set; }
+    public string CameraName { get; set; } = string.Empty;
+    public string SiteName { get; set; } = string.Empty;
+    public string AggressorName { get; set; } = string.Empty;
     public double MatchScore { get; set; }
     public DateTime DetectedAtUtc { get; set; }
-    public List<string> NearbyProtectedWomen { get; } = [];
+    public string IncidentStatus { get; set; } = "PendingReview";
+    public List<string> ProtectedWomenNames { get; } = [];
     public EvidencePreviewState? Snapshot { get; set; }
 
-    public AggressorPresenceAlertModel ToModel()
-        => new(ProtectedCaseId, FullName, MatchScore, DetectedAtUtc, NearbyProtectedWomen.ToArray(), Snapshot?.ToModel());
+    public OperationalAlertModel ToModel()
+        => new(IncidentId, CameraId, CameraName, SiteName, AggressorName, ProtectedWomenNames.ToArray(), DetectedAtUtc, MatchScore, IncidentStatus, Snapshot?.ToModel());
 }
 
 public sealed class MonitoringRuleState

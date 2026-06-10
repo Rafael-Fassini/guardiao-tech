@@ -166,6 +166,7 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
         Assert.Equal(1, payload.GetProperty("caseCount").GetInt32());
         Assert.Equal(1, payload.GetProperty("cameraCount").GetInt32());
         Assert.Equal(1, payload.GetProperty("cameraViews").GetArrayLength());
+        Assert.Equal(0, payload.GetProperty("activeOperationalAlerts").GetArrayLength());
     }
 
     [Fact]
@@ -231,7 +232,6 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
             DateTime.UtcNow.AddMinutes(-1));
 
         var protectedWomanIncident = new Incident(protectedWoman.Id, protectedWomanCandidate.Id);
-        var aggressorIncident = new Incident(aggressor.Id, aggressorCandidate.Id);
 
         var protectedWomanSnapshot = new EvidenceArtifact(
             protectedWomanIncident.Id,
@@ -240,21 +240,14 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
             "evidences/protected.jpg",
             "image/jpeg",
             RetentionMode.CaseBound);
-        var aggressorSnapshot = new EvidenceArtifact(
-            aggressorIncident.Id,
-            aggressorCandidate.Id,
-            Guardiao.Domain.Enums.EvidenceArtifactType.Snapshot,
-            "evidences/aggressor.jpg",
-            "image/jpeg",
-            RetentionMode.CaseBound);
 
         db.Sites.Add(site);
         db.Cameras.Add(camera);
         db.ProtectedCases.AddRange(protectedWoman, aggressor);
         db.PersonProjections.AddRange(protectedWomanProjection, aggressorProjection);
         db.BiometricCandidateEvents.AddRange(protectedWomanCandidate, aggressorCandidate);
-        db.Incidents.AddRange(protectedWomanIncident, aggressorIncident);
-        db.EvidenceArtifacts.AddRange(protectedWomanSnapshot, aggressorSnapshot);
+        db.Incidents.Add(protectedWomanIncident);
+        db.EvidenceArtifacts.Add(protectedWomanSnapshot);
         await db.SaveChangesAsync();
 
         _client.DefaultRequestHeaders.Remove("X-Debug-User");
@@ -275,8 +268,17 @@ public class InstitutionsControllerIntegrationTests : IClassFixture<GuardiaoApiF
         Assert.Single(cameraView.RecentProtectedWomen);
         Assert.Equal("Vitima Teste", cameraView.RecentProtectedWomen.Single().FullName);
         Assert.NotNull(cameraView.ActiveAlert);
-        Assert.Equal("Agressor Teste", cameraView.ActiveAlert!.FullName);
-        Assert.Contains("Vitima Teste", cameraView.ActiveAlert.NearbyProtectedWomen);
+        Assert.Equal("Agressor Teste", cameraView.ActiveAlert!.AggressorName);
+        Assert.Contains("Vitima Teste", cameraView.ActiveAlert.ProtectedWomenNames);
+
+        var alert = Assert.Single(payload.ActiveOperationalAlerts);
+        Assert.Equal(protectedWomanIncident.Id, alert.IncidentId);
+        Assert.Equal(camera.Id, alert.CameraId);
+        Assert.Equal("Camera Patio", alert.CameraName);
+        Assert.Equal("Site Operations", alert.SiteName);
+        Assert.Equal("Agressor Teste", alert.AggressorName);
+        Assert.Contains("Vitima Teste", alert.ProtectedWomenNames);
+        Assert.Equal("PendingReview", alert.IncidentStatus);
     }
 
     [Fact]

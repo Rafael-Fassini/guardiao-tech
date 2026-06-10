@@ -22,7 +22,9 @@ else if (summary is null)
 }
 else
 {
-    var activeAlerts = summary.CameraViews.Where(x => x.ActiveAlert is not null).ToList();
+    var activeAlerts = summary.ActiveOperationalAlerts
+        .OrderByDescending(x => x.DetectedAtUtc)
+        .ToList();
 
     <section class="hero">
         <div>
@@ -76,12 +78,12 @@ else
             {
                 <article class="alert-card">
                     <div>
-                        <span class="alert-label">Agressor detectado</span>
-                        <strong>@camera.ActiveAlert!.FullName em @camera.CameraName</strong>
+                        <span class="alert-label">Incidente ativo</span>
+                        <strong>@camera.AggressorName em @camera.CameraName</strong>
                     </div>
                     <p>
-                        Co-presenca com @string.Join(", ", camera.ActiveAlert.NearbyProtectedWomen) em @camera.SiteName
-                        as @camera.ActiveAlert.DetectedAtUtc.ToLocalTime().ToString("HH:mm").
+                        Co-presenca com @string.Join(", ", camera.ProtectedWomenNames) em @camera.SiteName
+                        as @camera.DetectedAtUtc.ToLocalTime().ToString("HH:mm"). Status: @DescribeIncidentStatus(camera.IncidentStatus).
                     </p>
                 </article>
             }
@@ -145,8 +147,9 @@ else
                                 <span>Score @camera.ActiveAlert.MatchScore.ToString("0.00")</span>
                             </div>
                             <p>
-                                @camera.ActiveAlert.FullName foi identificado no mesmo ambiente de
-                                @string.Join(", ", camera.ActiveAlert.NearbyProtectedWomen).
+                                @camera.ActiveAlert.AggressorName foi identificado no mesmo ambiente de
+                                @string.Join(", ", camera.ActiveAlert.ProtectedWomenNames).
+                                Incidente @camera.ActiveAlert.IncidentId.ToString()[..8] em @DescribeIncidentStatus(camera.ActiveAlert.IncidentStatus).
                             </p>
                         </section>
                     }

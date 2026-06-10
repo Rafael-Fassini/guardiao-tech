@@ -1,5 +1,6 @@
 using Guardiao.Api.Contracts;
 using Guardiao.Api.Infrastructure;
+using Guardiao.Application.Services;
 using Guardiao.Domain.Enums;
 using Guardiao.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -15,11 +16,16 @@ public class OperationsController : ControllerBase
 {
     private readonly GuardiaoDbContext _dbContext;
     private readonly ICameraLivePreviewPort _cameraLivePreviewPort;
+    private readonly CorrelationEngineOptions _correlationOptions;
 
-    public OperationsController(GuardiaoDbContext dbContext, ICameraLivePreviewPort cameraLivePreviewPort)
+    public OperationsController(
+        GuardiaoDbContext dbContext,
+        ICameraLivePreviewPort cameraLivePreviewPort,
+        CorrelationEngineOptions correlationOptions)
     {
         _dbContext = dbContext;
         _cameraLivePreviewPort = cameraLivePreviewPort;
+        _correlationOptions = correlationOptions;
     }
 
     [HttpGet("summary")]
@@ -67,7 +73,8 @@ public class OperationsController : ControllerBase
             .ToListAsync(cancellationToken);
 
         var recentDetections = await LoadRecentDetectionsAsync(cancellationToken);
-        var cameraViews = BuildCameraViews(cameras, recentDetections);
+        var activeOperationalAlerts = BuildOperationalAlerts(recentDetections, _correlationOptions.CoPresenceWindow);
+        var cameraViews = BuildCameraViews(cameras, recentDetections, activeOperationalAlerts);
 
         return Ok(new OperationsSummaryResponse(
             incidentCount,
@@ -76,7 +83,8 @@ public class OperationsController : ControllerBase
             auditEntryCount,
             recentIncidents,
             recentAuditEntries,
-            cameraViews));
+            cameraViews,
+            activeOperationalAlerts));
     }
 
     [HttpGet("cameras/{cameraId:guid}/preview")]
@@ -183,15 +191,19 @@ public class OperationsController : ControllerBase
                     .OrderByDescending(x => x.CreatedAtUtc)
                     .Select(x => (DateTime?)x.CreatedAtUtc)
                     .FirstOrDefault()))
-            .Take(40)
+            .Take(200)
             .ToListAsync(cancellationToken);
     }
 
     private static IReadOnlyCollection<CameraOperationalViewResponse> BuildCameraViews(
         IReadOnlyCollection<CameraDescriptor> cameras,
-        IReadOnlyCollection<RecentDetectionRow> recentDetections)
+        IReadOnlyCollection<RecentDetectionRow> recentDetections,
+        IReadOnlyCollection<OperationalAlertResponse> activeOperationalAlerts)
     {
         var cameraViews = new List<CameraOperationalViewResponse>(cameras.Count);
+        var alertsByCamera = activeOperationalAlerts
+            .GroupBy(x => x.CameraId)
+            .ToDictionary(x => x.Key, x => x.OrderByDescending(y => y.DetectedAtUtc).First());
 
         foreach (var camera in cameras)
         {
@@ -218,44 +230,67 @@ public class OperationsController : ControllerBase
                 latestDetection?.DetectedAtUtc,
                 latestSnapshot is null ? null : ToEvidencePreview(latestSnapshot),
                 protectedWomen,
-                BuildAggressorAlert(detections)));
+                alertsByCamera.GetValueOrDefault(camera.Id)));
         }
 
         return cameraViews;
     }
 
-    private static AggressorPresenceAlertResponse? BuildAggressorAlert(IReadOnlyCollection<RecentDetectionRow> detections)
+    private static IReadOnlyCollection<OperationalAlertResponse> BuildOperationalAlerts(
+        IReadOnlyCollection<RecentDetectionRow> recentDetections,
+        TimeSpan coPresenceWindow)
     {
-        var protectedWomen = detections
-            .Where(IsProtectedWomanDetection)
-            .ToList();
-        if (protectedWomen.Count == 0)
+        var alerts = new List<OperationalAlertResponse>();
+
+        foreach (var detection in recentDetections
+                     .Where(x => x.IncidentId.HasValue && x.IncidentStatus.HasValue && x.IncidentStatus != IncidentStatus.Dismissed)
+                     .GroupBy(x => x.IncidentId!.Value)
+                     .Select(x => x.OrderByDescending(y => y.DetectedAtUtc).First())
+                     .OrderByDescending(x => x.DetectedAtUtc))
         {
-            return null;
+            var sameCameraDetections = recentDetections
+                .Where(x => x.CameraId == detection.CameraId &&
+                            x.SiteId == detection.SiteId &&
+                            Math.Abs((x.DetectedAtUtc - detection.DetectedAtUtc).TotalSeconds) <= coPresenceWindow.TotalSeconds)
+                .OrderByDescending(x => x.DetectedAtUtc)
+                .ToList();
+
+            var aggressorDetection = detection.SubjectRole == MonitoredSubjectRole.Aggressor
+                ? detection
+                : sameCameraDetections.FirstOrDefault(x => x.SubjectRole == MonitoredSubjectRole.Aggressor);
+            if (aggressorDetection is null)
+            {
+                continue;
+            }
+
+            var protectedWomen = sameCameraDetections
+                .Where(IsProtectedWomanDetection)
+                .Select(x => x.FullName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (protectedWomen.Length == 0)
+            {
+                continue;
+            }
+
+            var incidentStatus = detection.IncidentStatus?.ToString() ?? "PendingReview";
+            alerts.Add(new OperationalAlertResponse(
+                detection.IncidentId!.Value,
+                detection.CameraId,
+                detection.CameraName,
+                detection.SiteName,
+                aggressorDetection.FullName,
+                protectedWomen,
+                sameCameraDetections.Max(x => x.DetectedAtUtc),
+                aggressorDetection.MatchScore,
+                incidentStatus,
+                ToEvidencePreview(aggressorDetection) ?? ToEvidencePreview(detection)));
         }
 
-        var alertWindow = TimeSpan.FromMinutes(10);
-        var aggressorDetection = detections
-            .Where(x => x.SubjectRole == MonitoredSubjectRole.Aggressor)
-            .FirstOrDefault(x => protectedWomen.Any(y => Math.Abs((x.DetectedAtUtc - y.DetectedAtUtc).TotalMinutes) <= alertWindow.TotalMinutes));
-        if (aggressorDetection is null)
-        {
-            return null;
-        }
-
-        var nearbyProtectedWomen = protectedWomen
-            .Where(x => Math.Abs((aggressorDetection.DetectedAtUtc - x.DetectedAtUtc).TotalMinutes) <= alertWindow.TotalMinutes)
-            .Select(x => x.FullName)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+        return alerts
+            .GroupBy(x => x.IncidentId)
+            .Select(x => x.OrderByDescending(y => y.DetectedAtUtc).First())
             .ToArray();
-
-        return new AggressorPresenceAlertResponse(
-            aggressorDetection.ProtectedCaseId,
-            aggressorDetection.FullName,
-            aggressorDetection.MatchScore,
-            aggressorDetection.DetectedAtUtc,
-            nearbyProtectedWomen,
-            ToEvidencePreview(aggressorDetection));
     }
 
     private static bool IsProtectedWomanDetection(RecentDetectionRow detection)

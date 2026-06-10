@@ -9,7 +9,8 @@ public sealed record OperationsSummaryResponse(
     int AuditEntryCount,
     IReadOnlyCollection<RecentIncidentResponse> RecentIncidents,
     IReadOnlyCollection<AuditEntryResponse> RecentAuditEntries,
-    IReadOnlyCollection<CameraOperationalViewResponse> CameraViews);
+    IReadOnlyCollection<CameraOperationalViewResponse> CameraViews,
+    IReadOnlyCollection<OperationalAlertResponse> ActiveOperationalAlerts);
 
 public sealed record CameraOperationalViewResponse(
     Guid CameraId,
@@ -21,7 +22,7 @@ public sealed record CameraOperationalViewResponse(
     DateTime? LastDetectionAtUtc,
     EvidencePreviewResponse? LatestSnapshot,
     IReadOnlyCollection<DetectedSubjectResponse> RecentProtectedWomen,
-    AggressorPresenceAlertResponse? ActiveAlert);
+    OperationalAlertResponse? ActiveAlert);
 
 public sealed record EvidencePreviewResponse(
     Guid IncidentId,
@@ -40,11 +41,25 @@ public sealed record DetectedSubjectResponse(
     DateTime DetectedAtUtc,
     EvidencePreviewResponse? Snapshot);
 
+public sealed record OperationalAlertResponse(
+    Guid IncidentId,
+    Guid CameraId,
+    string CameraName,
+    string SiteName,
+    string AggressorName,
+    IReadOnlyCollection<string> ProtectedWomenNames,
+    DateTime DetectedAtUtc,
+    double MatchScore,
+    string IncidentStatus,
+    EvidencePreviewResponse? Snapshot);
+
 public sealed record AggressorPresenceAlertResponse(
+    Guid IncidentId,
     Guid ProtectedCaseId,
     string FullName,
     double MatchScore,
     DateTime DetectedAtUtc,
+    string IncidentStatus,
     IReadOnlyCollection<string> NearbyProtectedWomen,
     EvidencePreviewResponse? Snapshot);
 

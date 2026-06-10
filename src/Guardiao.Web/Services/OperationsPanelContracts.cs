@@ -7,7 +7,8 @@ public sealed record OperationsSummaryModel(
     int AuditEntryCount,
     IReadOnlyCollection<RecentIncidentModel> RecentIncidents,
     IReadOnlyCollection<AuditEntryModel> RecentAuditEntries,
-    IReadOnlyCollection<CameraOperationalViewModel> CameraViews);
+    IReadOnlyCollection<CameraOperationalViewModel> CameraViews,
+    IReadOnlyCollection<OperationalAlertModel> ActiveOperationalAlerts);
 
 public sealed record CameraOperationalViewModel(
     Guid CameraId,
@@ -19,7 +20,7 @@ public sealed record CameraOperationalViewModel(
     DateTime? LastDetectionAtUtc,
     EvidencePreviewModel? LatestSnapshot,
     IReadOnlyCollection<DetectedSubjectModel> RecentProtectedWomen,
-    AggressorPresenceAlertModel? ActiveAlert);
+    OperationalAlertModel? ActiveAlert);
 
 public sealed record EvidencePreviewModel(
     Guid IncidentId,
@@ -42,11 +43,25 @@ public sealed record DetectedSubjectModel(
     DateTime DetectedAtUtc,
     EvidencePreviewModel? Snapshot);
 
+public sealed record OperationalAlertModel(
+    Guid IncidentId,
+    Guid CameraId,
+    string CameraName,
+    string SiteName,
+    string AggressorName,
+    IReadOnlyCollection<string> ProtectedWomenNames,
+    DateTime DetectedAtUtc,
+    double MatchScore,
+    string IncidentStatus,
+    EvidencePreviewModel? Snapshot);
+
 public sealed record AggressorPresenceAlertModel(
+    Guid IncidentId,
     Guid ProtectedCaseId,
     string FullName,
     double MatchScore,
     DateTime DetectedAtUtc,
+    string IncidentStatus,
     IReadOnlyCollection<string> NearbyProtectedWomen,
     EvidencePreviewModel? Snapshot);
 
