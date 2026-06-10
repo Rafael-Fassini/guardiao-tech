@@ -92,7 +92,8 @@ public class CasesController : ControllerBase
     [EnableRateLimiting(SecurityRateLimitPolicies.ApiWrites)]
     public async Task<IActionResult> PutSubjectRole(Guid id, [FromBody] UpdateProtectedCaseSubjectRoleRequest request, CancellationToken cancellationToken)
     {
-        if (!Enum.TryParse<MonitoredSubjectRole>(request.SubjectRole, ignoreCase: true, out var subjectRole))
+        var requestedSubjectRole = request.SubjectRole?.Trim() ?? string.Empty;
+        if (!Enum.TryParse<MonitoredSubjectRole>(requestedSubjectRole, ignoreCase: true, out var subjectRole))
         {
             return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
             {
@@ -112,14 +113,15 @@ public class CasesController : ControllerBase
             return NotFound();
         }
 
-        protectedCase.Reclassify(subjectRole);
-
-        _dbContext.AuditLogs.Add(new AuditLog(
-            AuditActorType.Operator,
-            "protected_case.subject_role.updated",
-            nameof(ProtectedCase),
-            protectedCase.Id.ToString(),
-            $"case_id={protectedCase.Id};subject_role={subjectRole}"));
+        if (protectedCase.Reclassify(subjectRole))
+        {
+            _dbContext.AuditLogs.Add(new AuditLog(
+                AuditActorType.Operator,
+                "protected_case.subject_role.updated",
+                nameof(ProtectedCase),
+                protectedCase.Id.ToString(),
+                $"case_id={protectedCase.Id};subject_role={subjectRole}"));
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

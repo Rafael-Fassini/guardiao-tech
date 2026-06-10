@@ -1,4 +1,5 @@
 using Guardiao.Domain.Entities;
+using Guardiao.Domain.Enums;
 using Guardiao.Domain.Exceptions;
 using Guardiao.Domain.ValueObjects;
 using Xunit;
@@ -37,5 +38,53 @@ public class ProtectedCaseTests
                 MonitoringStatus.Enabled,
                 ConsentStatus.Granted,
                 DateTime.UtcNow));
+    }
+
+    [Fact]
+    public void Constructor_ShouldDefaultSubjectRoleToProtectedWoman()
+    {
+        var protectedCase = new ProtectedCase(
+            new ExternalCaseId("case-role-default"),
+            1,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted);
+
+        Assert.Equal(MonitoredSubjectRole.ProtectedWoman, protectedCase.SubjectRole);
+    }
+
+    [Fact]
+    public void Reclassify_ShouldReturnTrueAndUpdateRole_WhenRoleChanges()
+    {
+        var protectedCase = new ProtectedCase(
+            new ExternalCaseId("case-role-change"),
+            1,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted);
+
+        var changed = protectedCase.Reclassify(MonitoredSubjectRole.Aggressor);
+
+        Assert.True(changed);
+        Assert.Equal(MonitoredSubjectRole.Aggressor, protectedCase.SubjectRole);
+    }
+
+    [Fact]
+    public void Reclassify_ShouldReturnFalse_WhenRoleDoesNotChange()
+    {
+        var protectedCase = new ProtectedCase(
+            new ExternalCaseId("case-role-same"),
+            1,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            MonitoringStatus.Enabled,
+            ConsentStatus.Granted);
+
+        var changed = protectedCase.Reclassify(MonitoredSubjectRole.ProtectedWoman);
+
+        Assert.False(changed);
+        Assert.Equal(MonitoredSubjectRole.ProtectedWoman, protectedCase.SubjectRole);
     }
 }

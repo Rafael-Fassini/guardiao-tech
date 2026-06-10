@@ -91,8 +91,14 @@ public class ProtectedCase
         LastSyncFailureReason = string.IsNullOrWhiteSpace(failureReason) ? "unknown" : failureReason.Trim();
     }
 
-    public void Reclassify(MonitoredSubjectRole subjectRole)
+    public bool Reclassify(MonitoredSubjectRole subjectRole)
     {
+        if (SubjectRole == subjectRole)
+        {
+            return false;
+        }
+
         SubjectRole = subjectRole;
+        return true;
     }
 }
